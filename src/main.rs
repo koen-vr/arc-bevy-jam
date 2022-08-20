@@ -3,12 +3,21 @@ use bevy::{prelude::*, render::texture::ImageSettings, window};
 mod dev;
 use dev::DevPlugin;
 
+mod hexa;
+use hexa::*;
+
+mod map;
+use map::HexmapPlugin;
+
 mod player;
 use player::PlayerPlugin;
 
 mod xorshift;
 
 pub const CLEAR: Color = Color::rgb(0.1, 0.1, 0.1);
+
+pub const MOVE_SPEED: f32 = 6.0;
+pub const ROTATE_SPEED: f32 = 24.0;
 
 pub const TILE_SIZE: f32 = 32.0;
 
@@ -46,6 +55,7 @@ fn main() {
         .add_plugin(DevPlugin)
         .add_plugin(AssetsPugin)
         .add_plugin(PlayerPlugin)
+        .add_plugin(HexmapPlugin)
         .add_startup_system(spawn_camera)
         .run();
 }

@@ -1,14 +1,15 @@
-use crate::{GameState, MainCamera, SpaceSheet, TILE_SIZE};
+use crate::*;
 
-use bevy::{input::mouse::MouseMotion, prelude::*, render::camera::RenderTarget};
+use bevy::render::camera::RenderTarget;
 use bevy_inspector_egui::Inspectable;
 
 #[derive(Default, Component, Inspectable)]
 pub struct Player {
-    speed: f32,
     moved: bool,
     active: bool,
     lookat: Vec3,
+    move_speed: f32,
+    rotate_speed: f32,
 }
 
 pub struct PlayerPlugin;
@@ -35,7 +36,7 @@ fn movement_system(
         return;
     }
 
-    let to_move = player.speed * time.delta_seconds() * TILE_SIZE;
+    let to_move = player.move_speed * time.delta_seconds() * TILE_SIZE;
 
     let mut target_y = 0.0;
     if keyboard.pressed(KeyCode::W) {
@@ -100,7 +101,7 @@ fn rotate_system(
         let q = Quat::from_axis_angle(-Vec3::Z, delta);
         player_transform.rotation = player_transform
             .rotation
-            .slerp(q, player.speed * time.delta_seconds());
+            .slerp(q, player.rotate_speed * time.delta_seconds());
     }
 }
 
@@ -132,8 +133,9 @@ pub fn spawn_player(mut commands: Commands, space_sheet: Res<SpaceSheet>) {
         })
         .insert(Name::new("Player"))
         .insert(Player {
-            speed: 6.0,
             active: true,
+            move_speed: MOVE_SPEED,
+            rotate_speed: ROTATE_SPEED,
             ..Default::default()
         })
         .id();
