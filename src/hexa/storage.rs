@@ -46,7 +46,7 @@ pub struct HexBundle {
 #[derive(Component, Clone, Debug, Default)]
 pub struct HexNode {
     pub layout: Layout,
-    pub tilemap: HashMap<Axial, Option<Entity>>,
+    pub hexgrid: HashMap<Axial, Option<Entity>>,
 }
 
 #[derive(Component, Clone, Debug, Default)]
@@ -63,7 +63,7 @@ impl HexNode {
                 layout: style.clone(),
                 matrix: Orientation::new(style),
             },
-            tilemap: HashMap::new(),
+            hexgrid: HashMap::new(),
         }
     }
 }
