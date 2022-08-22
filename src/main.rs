@@ -1,86 +1,62 @@
-use bevy::{prelude::*, render::texture::ImageSettings, window};
+use bevy::prelude::*;
+use bevy::render::texture::ImageSettings;
+use bevy::{log, window};
+
+use bevy_asset_loader::prelude::*;
+
+const GAMENAME: &str = "Arc Raiders";
+const GAMECLEAR: Color = Color::rgb(0.03137254902, 0.0, 0.05882352941);
 
 mod dev;
-use dev::DevPlugin;
+mod gui;
 
-mod hexa;
-use hexa::*;
-
-mod map;
-use map::HexmapPlugin;
-
-mod player;
-use player::PlayerPlugin;
-
-mod xorshift;
-
-pub const CLEAR: Color = Color::rgb(0.1, 0.1, 0.1);
-
-pub const MOVE_SPEED: f32 = 6.0;
-pub const ROTATE_SPEED: f32 = 24.0;
-
-pub const TILE_SIZE: f32 = 32.0;
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-enum GameState {
-    // AssetLoading,
-    UniverseMap,
-    // SystemMap,
-    // Combat,
+#[derive(Component, Clone, Copy, Debug, Hash, Eq, PartialEq)]
+pub enum GameMode {
+    HexGrid,
+    EventGrid,
 }
 
-#[derive(Component)]
-struct MainCamera;
+#[derive(Component, Clone, Copy, Debug, Hash, Eq, PartialEq)]
+pub enum AppState {
+    MainLoading,
+    MainMenu,
+    GameLoading,
+    GamePlay(GameMode),
+    Credits,
+}
 
-pub struct AssetsPugin;
-
-pub struct SpaceSheet(pub Handle<TextureAtlas>);
+#[derive(AssetCollection)]
+struct AppAssets {
+    #[asset(path = "fonts/FiraSans-Bold.ttf")]
+    gui_font: Handle<Font>,
+}
 
 fn main() {
-    App::new()
-        .insert_resource(ImageSettings::default_nearest())
-        .insert_resource(ClearColor(CLEAR))
-        .insert_resource(WindowDescriptor {
-            width: 1600.0,
-            height: 900.0,
-            resizable: false,
-            title: "Arc Explorer".to_string(),
-            position: window::WindowPosition::Automatic,
-            mode: window::WindowMode::Windowed,
-            present_mode: window::PresentMode::AutoVsync,
-            ..Default::default()
-        })
-        .add_state(GameState::UniverseMap)
-        .add_plugins(DefaultPlugins)
-        .add_plugin(DevPlugin)
-        .add_plugin(AssetsPugin)
-        .add_plugin(PlayerPlugin)
-        .add_plugin(HexmapPlugin)
-        .add_startup_system(spawn_camera)
-        .run();
-}
+    let mut app = App::new();
 
-impl Plugin for AssetsPugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system_to_stage(StartupStage::PreStartup, load_space_sheet);
-    }
-}
+    // Setup game engine
+    app.insert_resource(ImageSettings::default_nearest());
+    app.insert_resource(ClearColor(GAMECLEAR));
+    app.insert_resource(WindowDescriptor {
+        width: 1600.0,
+        height: 900.0,
+        resizable: false,
+        title: GAMENAME.into(),
+        position: window::WindowPosition::Automatic,
+        mode: window::WindowMode::Windowed,
+        present_mode: window::PresentMode::AutoVsync,
+        ..Default::default()
+    });
 
-fn load_space_sheet(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-) {
-    let image = asset_server.load("base-space-sheet.png");
-    let atlas = TextureAtlas::from_grid(image, Vec2::splat(126.0), 8, 6);
+    // Set state to MainLoading
+    app.add_state(AppState::MainLoading).add_loading_state(
+        LoadingState::new(AppState::MainLoading)
+            .continue_to_state(AppState::MainMenu)
+            .with_collection::<AppAssets>(),
+    );
 
-    let atlas_handle = texture_atlases.add(atlas);
-    commands.insert_resource(SpaceSheet(atlas_handle));
-}
-
-fn spawn_camera(mut commands: Commands) {
-    commands
-        .spawn()
-        .insert_bundle(Camera2dBundle::default())
-        .insert(MainCamera);
+    app.add_plugins(DefaultPlugins);
+    app.add_plugin(dev::DevPlugin);
+    app.add_plugin(gui::GuiPlugin);
+    app.run();
 }
