@@ -66,4 +66,52 @@ impl HexNode {
             hexgrid: HashMap::new(),
         }
     }
+
+    pub fn spawn_entities(
+        &mut self,
+        node_id: Entity,
+        commands: &mut Commands,
+        asset_server: &Res<AssetServer>,
+    ) -> Vec<Entity> {
+        // Collections setup
+        let mut list = Vec::new();
+        let mut grid = HashMap::new();
+
+        let sprite = asset_server.load("hex-pointy-64.1.png");
+
+        // Spawn hex grid entities
+        let radius = 12;
+        for q in -radius..(radius + 1) {
+            let r1 = i32::max(-radius, -q - radius);
+            let r2 = i32::min(radius, -q + radius);
+            for r in r1..(r2 + 1) {
+                let hex = Axial { q, r };
+                let name = format!("hex-{}:{}", q, r);
+                let pos = self.layout.center_for(&hex);
+                let entity = commands
+                    .spawn_bundle(SpriteBundle {
+                        texture: sprite.clone(),
+                        transform: Transform {
+                            translation: Vec3::new(pos.x, pos.y, 10.0),
+                            ..Default::default()
+                        },
+                        ..default()
+                    })
+                    .insert_bundle(HexBundle {
+                        position: hex.into(),
+                        texture: HexTexture(0),
+                        node: HexNodeId(node_id),
+                    })
+                    .insert(Name::new(name))
+                    .id();
+
+                grid.insert(hex, Some(entity));
+                list.push(entity);
+            }
+        }
+
+        // Save the hex grid for updates
+        self.hexgrid = grid;
+        list
+    }
 }

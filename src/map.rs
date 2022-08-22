@@ -28,44 +28,28 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn spawn_nodes(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let sprite_handle = asset_server.load("hex-pointy-64.1.png");
+    // Initialize a hex storage component for data
+    // let mut node_storage = HexStorage::default();
 
-    // Create a node entity, used to spawn hex bundles
-    let node_entity = commands.spawn().id();
-    let node = HexNode::new(
+    // Create a node used to spawn hex grids
+    let mut node = HexNode::new(
         Vec2 { x: 0., y: 0. },
         Vec2 { x: 34., y: 34. },
         orient::Style::Pointy,
     );
-    // Initialize a hex storage component for data
-    // let mut node_storage = HexStorage::default();
 
-    // Spawn node hex entities
-    let radius = 12;
-    //for q := -radius; q <= radius; q++ {
-    for q in -radius..(radius + 1) {
-        let r1 = i32::max(-radius, -q - radius);
-        let r2 = i32::min(radius, -q + radius);
-        //for r := r1; r <= r2; r++ {
-        for r in r1..(r2 + 1) {
-            let hex = Axial { q, r };
-            let pos = node.layout.center_for(&hex);
-            commands
-                .spawn_bundle(SpriteBundle {
-                    texture: sprite_handle.clone(),
-                    transform: Transform {
-                        translation: Vec3::new(pos.x, pos.y, 10.0),
-                        ..Default::default()
-                    },
-                    ..default()
-                })
-                .insert_bundle(HexBundle {
-                    position: hex.into(),
-                    texture: HexTexture(0),
-                    node: HexNodeId(node_entity),
-                });
-        }
-    }
+    // Setup the node entity and spawn the grid
+    let name = format!("node-{}:{}", 0, 0);
+    let node_id = commands.spawn().insert(Name::new(name)).id();
+    let list = node.spawn_entities(node_id, &mut commands, &asset_server);
+
+    // Finalize hex node and entities as children
+    commands
+        .entity(node_id)
+        .insert_bundle(VisibilityBundle::default())
+        .insert_bundle(TransformBundle::default())
+        .insert(node)
+        .push_children(&list);
 }
 
 fn active_node(
