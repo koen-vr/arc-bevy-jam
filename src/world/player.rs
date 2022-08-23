@@ -1,13 +1,12 @@
 use crate::*;
 
 use bevy::{
-    input::{mouse::MouseButtonInput, ButtonState},
-    log,
-    render::{camera::RenderTarget, render_resource::encase::rts_array::Length},
+    render::{camera::RenderTarget, render_phase::EntityPhaseItem},
+    utils::HashMap,
 };
 use bevy_inspector_egui::Inspectable;
 
-#[derive(Default, Component, Inspectable)]
+#[derive(Component, Default, Inspectable)]
 pub struct Player {
     moved: bool,
     active: bool,
@@ -16,23 +15,40 @@ pub struct Player {
     rotate_speed: f32,
 }
 
-#[derive(Default, Component, Inspectable)]
-pub struct PlayerMoveTo {
+#[derive(Component, Default, Inspectable)]
+pub struct Recources {
+    energy: u32,
+}
+
+#[derive(Component, Clone, Debug)]
+pub struct Grid {
+    pub layout: Layout,
+    pub hexgrid: HashMap<Axial, Option<Entity>>,
+}
+
+#[derive(Component, Clone, Copy, Debug, Hash, Inspectable)]
+pub struct GridId(pub Entity);
+
+#[derive(Component, Clone, Copy, Default, Debug, Inspectable)]
+pub struct GridTarget {
+    mouse: Vec2,
     target: Vec2,
 }
 
-impl Player {
-    pub fn is_active(&self) -> bool {
-        self.active
-    }
+#[derive(Component, Clone, Copy, Default, Debug, Inspectable)]
+pub struct GridMovement {
+    cost: u32,
+    speed: u32,
+    distance: u32,
 }
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(spawn_player).add_system_set(
             SystemSet::on_update(GameState::UniverseMap)
-                .with_system(mouse_movement_system.label("universe_move"))
+                .with_system(grid_movement_system.label("universe_move"))
                 .with_system(key_movement_system.after("universe_move"))
                 .with_system(rotate_system.after("universe_move"))
                 .with_system(camera_system.after("universe_move")),
@@ -43,7 +59,7 @@ impl Plugin for PlayerPlugin {
 fn key_movement_system(
     time: Res<Time>,
     keyboard: Res<Input<KeyCode>>,
-    mut player_query: Query<(&mut Player, &mut PlayerMoveTo, &mut Transform)>,
+    mut player_query: Query<(&mut Player, &mut GridTarget, &mut Transform)>,
 ) {
     let (mut player, mut move_to, mut transform) = player_query.single_mut();
     player.moved = false;
@@ -101,50 +117,34 @@ fn key_movement_system(
     }
 }
 
-fn mouse_movement_system(
+fn grid_movement_system(
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
     camera_query: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
-    mut player_query: Query<(&mut Player, &mut PlayerMoveTo)>,
+    mut player_query: Query<(&Player, &mut Transform, &mut GridTarget, &mut GridMovement)>,
 ) {
-    if !buttons.just_pressed(MouseButton::Left) {
-        return;
-    }
-    let (mut player, mut move_to) = player_query.single_mut();
+    let (player, mut player_transform, mut grid_target, mut grid_movement) =
+        player_query.single_mut();
     if !player.active {
         return;
     }
 
     // Get the primary window the camera renders to.
     let (camera, camera_transform) = camera_query.single();
-    let wnd = if let RenderTarget::Window(id) = camera.target {
+    let window = if let RenderTarget::Window(id) = camera.target {
         windows.get(id).unwrap()
     } else {
         windows.get_primary().unwrap()
     };
 
-    if let Some(screen_pos) = wnd.cursor_position() {
-        let node = HexNode::new(
-            Vec2 { x: 0., y: 0. },
-            Vec2 { x: 34., y: 34. },
-            orient::Style::Pointy,
-        );
-
-        // Convert window position to gpu coordinates
-        let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
-        let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
-        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
-
-        // use it to convert ndc to world-space coordinates
-        let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
-
-        let hex = node.layout.hex_for(Vec2 {
-            x: world_pos.x,
-            y: world_pos.y,
-        });
-
-        move_to.target = node.layout.center_for(&hex);
+    // Update the current target
+    grid_target.update_current(window, camera, camera_transform);
+    if buttons.just_pressed(MouseButton::Left) {
+        grid_target.set_current();
     }
+
+    // Update the path to the targets
+    grid_movement.update_current(&grid_target, &player_transform);
 }
 
 fn rotate_system(
@@ -219,7 +219,51 @@ pub fn spawn_player(mut commands: Commands, space_sheet: Res<SpaceSheet>) {
             rotate_speed: ROTATE_SPEED,
             ..Default::default()
         })
-        .insert(PlayerMoveTo {
-            ..Default::default()
+        .insert(Recources { energy: 100_00 })
+        .insert(GridTarget {
+            mouse: Vec2::new(0.0, 0.0),
+            target: Vec2::new(0.0, 0.0),
+        })
+        .insert(GridMovement {
+            cost: 0_25,
+            speed: 6_00,
+            distance: 4_00,
         });
+}
+
+impl GridTarget {
+    fn set_current(&mut self) {
+        self.target = self.mouse;
+    }
+
+    fn update_current(&mut self, window: &Window, camera: &Camera, transform: &GlobalTransform) {
+        if let Some(screen_pos) = window.cursor_position() {
+            let node = HexNode::new(
+                Vec2 { x: 0., y: 0. },
+                Vec2 { x: 34., y: 34. },
+                orient::Style::Pointy,
+            );
+
+            // Convert window position to gpu coordinates
+            let window_size = Vec2::new(window.width() as f32, window.height() as f32);
+            let ndc_to_world = transform.compute_matrix() * camera.projection_matrix().inverse();
+
+            // use it to convert ndc to world-space coordinates
+            let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
+            let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
+
+            let hex = node.layout.hex_for(Vec2 {
+                x: world_pos.x,
+                y: world_pos.y,
+            });
+
+            self.mouse = node.layout.center_for(&hex);
+        }
+    }
+}
+
+impl GridMovement {
+    fn update_current(&mut self, targets: &GridTarget, trasform: &Transform) {
+        // The goal is to update a line from transform to target
+    }
 }

@@ -7,8 +7,11 @@ use bevy_asset_loader::prelude::*;
 const GAMENAME: &str = "Arc Raiders";
 const GAMECLEAR: Color = Color::rgb(0.03137254902, 0.0, 0.05882352941);
 
-mod dev;
 mod gui;
+
+mod tool;
+use tool::dev;
+use tool::xorshift;
 
 #[derive(Component, Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub enum GameMode {
