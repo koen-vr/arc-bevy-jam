@@ -20,3 +20,12 @@ bevy = { version = "0.8.0", features = ["dynamic"] }
 
 ...
 ~~~
+
+## Game State
+
+Game States - Push Pop
+~~~
+-> Pick Drop <> Actor Create <> Camera Zoom
+=> Base Grid -> Explore Grid -> Event Grid
+<= Base Grid <- Explore Grid <- Event Grid
+~~~

@@ -3,6 +3,7 @@ use bevy::render::texture::ImageSettings;
 use bevy::{log, window};
 
 use bevy_asset_loader::prelude::*;
+use bevy_inspector_egui::prelude::*;
 
 const GAMENAME: &str = "Arc Raiders";
 const GAMECLEAR: Color = Color::rgb(0.03137254902, 0.0, 0.05882352941);
@@ -13,10 +14,13 @@ mod tool;
 use tool::debug;
 use tool::xorshift;
 
+mod world;
+
 #[derive(Component, Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub enum GameMode {
-    HexGrid,
+    BaseGrid,
     EventGrid,
+    ExploreGrid,
 }
 
 #[derive(Component, Clone, Copy, Debug, Hash, Eq, PartialEq)]
