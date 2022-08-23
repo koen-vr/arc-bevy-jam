@@ -10,7 +10,7 @@ const GAMECLEAR: Color = Color::rgb(0.03137254902, 0.0, 0.05882352941);
 mod gui;
 
 mod tool;
-use tool::dev;
+use tool::debug;
 use tool::xorshift;
 
 #[derive(Component, Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -59,7 +59,7 @@ fn main() {
     );
 
     app.add_plugins(DefaultPlugins);
-    app.add_plugin(dev::DevPlugin);
+    app.add_plugin(debug::DebugPlugin);
     app.add_plugin(gui::GuiPlugin);
     app.run();
 }
