@@ -17,8 +17,12 @@ struct PlayerState {
     position: Vec2,
 }
 
-#[derive(Component)]
-struct PlayerCamera;
+#[derive(Component, Default)]
+struct PlayerCamera {
+    timer: Timer,
+    scale: f32,
+    target: f32,
+}
 
 #[derive(Component, Clone, Copy, Debug, Hash)]
 pub struct GridId(pub Entity);
@@ -51,6 +55,10 @@ impl Plugin for PlayerPlugin {
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_player_game));
         app.add_system_set(SystemSet::on_enter(base_mode).with_system(enter_player_game));
+
+        // TODO Reset the move_to target when entering a hex, allow users to enter early
+        app.add_system_set(SystemSet::on_exit(event_mode).with_system(exit_event_camera));
+        app.add_system_set(SystemSet::on_enter(event_mode).with_system(enter_event_camera));
 
         app.add_system_set(SystemSet::on_exit(explore_mode).with_system(exit_player_explore));
         app.add_system_set(SystemSet::on_enter(explore_mode).with_system(enter_player_explore));
@@ -90,6 +98,14 @@ impl Plugin for PlayerPlugin {
                     .after("player-move"),
             ),
         );
+
+        // Camera Scale
+        app.add_system_set(
+            SystemSet::on_update(event_mode).with_system(update_scale_camera.after("gui-update")),
+        );
+        app.add_system_set(
+            SystemSet::on_update(explore_mode).with_system(update_scale_camera.after("gui-update")),
+        );
     }
 }
 
@@ -114,13 +130,50 @@ fn exit_player_game(mut commands: Commands, query: Query<Entity, With<CleanupPla
 
 fn enter_player_game(mut commands: Commands) {
     log::info!("enter_player_game");
-
+    let mut camera_bundle = Camera2dBundle::default();
+    camera_bundle.projection.scale = 1.8;
     commands
-        .spawn_bundle(Camera2dBundle::default())
+        .spawn_bundle(camera_bundle)
         .insert(Name::new("game-camera"))
         .insert(CleanupPlayerGame)
-        .insert(PlayerCamera)
+        .insert(PlayerCamera {
+            timer: Timer::default(),
+            scale: CAMERA_ZOOM_EXPLORE,
+            target: CAMERA_ZOOM_EXPLORE,
+        })
         .insert(MainCamera);
+}
+
+fn exit_event_camera(mut camera_query: Query<&mut PlayerCamera, Without<Player>>) {
+    let mut camera = camera_query.single_mut();
+    camera.timer = Timer::from_seconds(1., false);
+    camera.target = CAMERA_ZOOM_EXPLORE;
+}
+
+fn enter_event_camera(mut camera_query: Query<&mut PlayerCamera, Without<Player>>) {
+    let mut camera = camera_query.single_mut();
+    camera.timer = Timer::from_seconds(1., false);
+    camera.target = CAMERA_ZOOM_EVENT
+}
+
+fn update_scale_camera(
+    time: Res<Time>,
+    mut camera_query: Query<(&mut PlayerCamera, &mut OrthographicProjection), Without<Player>>,
+) {
+    let (mut camera, mut projection) = camera_query.single_mut();
+    if camera.scale == camera.target {
+        return;
+    }
+
+    camera.timer.tick(time.delta());
+    if camera.timer.finished() {
+        projection.scale = camera.target;
+        camera.scale = camera.target;
+        return;
+    }
+
+    let t = camera.timer.percent();
+    projection.scale = lerp(camera.scale, camera.target, t);
 }
 
 ////////////////////////////////
@@ -143,7 +196,7 @@ fn enter_player_explore(
 
     let mut sprite = TextureAtlasSprite::new(7);
     sprite.color = Color::rgb(0.9, 0.8, 1.0);
-    sprite.custom_size = Some(Vec2::splat(TILE_SIZE));
+    sprite.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
 
     let position = player_state.position;
 
@@ -198,30 +251,31 @@ fn move_event_grid(
         return;
     }
 
-    let move_speed = player.move_speed * time.delta_seconds() * TILE_SIZE;
+    let move_speed = player.move_speed * time.delta_seconds() * TILE_SIZE * 0.5;
 
     let mut target_y = 0.0;
     if keyboard.pressed(KeyCode::W) {
-        target_y = move_speed;
+        target_y = 1.;
         player.moved = true;
     }
     if keyboard.pressed(KeyCode::S) {
-        target_y = -move_speed;
+        target_y = -1.;
         player.moved = true;
     }
 
     let mut target_x = 0.0;
     if keyboard.pressed(KeyCode::A) {
-        target_x = -move_speed;
+        target_x = -1.;
         player.moved = true;
     }
     if keyboard.pressed(KeyCode::D) {
-        target_x = move_speed;
+        target_x = 1.;
         player.moved = true;
     }
 
     if player.moved {
-        transform.translation = transform.translation + Vec3::new(target_x, target_y, 0.0);
+        transform.translation =
+            transform.translation + (Vec3::new(target_x, target_y, 0.0).normalize() * move_speed);
 
         move_to.target = Vec2 {
             x: transform.translation.x,
@@ -234,10 +288,11 @@ fn move_explore_grid(
     time: Res<Time>,
     windows: Res<Windows>,
     mut buttons: ResMut<Input<MouseButton>>,
-    camera_query: Query<(&Camera, &GlobalTransform), With<PlayerCamera>>,
-    mut player_query: Query<(&Player, &mut GridTarget, &mut GridMovement, &mut Transform)>,
+    mut player_query: Query<(&Player, &mut GridTarget, &mut Transform)>,
+    mut active_query: Query<&mut Transform, (With<GridTargetHex>, Without<Player>)>,
+    camera_query: Query<(&Camera, &GlobalTransform), (With<PlayerCamera>, Without<Player>)>,
 ) {
-    let (player, mut move_to, mut grid_movement, mut transform) = player_query.single_mut();
+    let (player, mut move_to, mut transform) = player_query.single_mut();
     if !player.active {
         return;
     }
@@ -252,14 +307,20 @@ fn move_explore_grid(
 
     // Update the current target
     move_to.update_current(window, camera, camera_transform);
+
     if buttons.just_pressed(MouseButton::Left) {
         log::info!(">> grid node {}", "BaseExit");
         move_to.set_current();
         buttons.clear();
     }
 
-    // Update the path to the targets
-    grid_movement.update_current(&move_to, &transform);
+    // Update the path to the targets Not sure if this is the way
+    // It is here because we compute the mouse position in move to
+    let mut active_transform = active_query.single_mut();
+    active_transform.translation.x = move_to.mouse.x;
+    active_transform.translation.y = move_to.mouse.y;
+    // TODO Move Above or replace with method call below
+    // grid_movement.update_current(&active_entity, &move_to, &transform);
 
     let pos = Vec2 {
         x: transform.translation.x,
@@ -299,7 +360,7 @@ fn player_rotate_system(
     time: Res<Time>,
     windows: Res<Windows>,
     mut player_query: Query<(&mut Player, &mut Transform)>,
-    camera_query: Query<(&Camera, &GlobalTransform), With<PlayerCamera>>,
+    camera_query: Query<(&Camera, &GlobalTransform), (With<PlayerCamera>, Without<Player>)>,
 ) {
     let (camera, camera_transform) = camera_query.single();
     let (player, mut player_transform) = player_query.single_mut();
