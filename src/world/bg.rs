@@ -32,9 +32,10 @@ pub struct BgPlugin;
 
 impl Plugin for BgPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(
-            SystemSet::on_enter(AppState::MainMenu).with_system(spawn_stars_spawner),
-        );
+        // app.add_startup_system(
+        //     SystemSet::on_enter(AppState::MainMenu).with_system(spawn_stars_spawner),
+        // );
+        app.add_startup_system(spawn_stars_spawner);
         app.add_system_set(
             SystemSet::on_update(AppState::MainMenu).with_system(emit_stars.label("emit")),
         );
@@ -70,8 +71,10 @@ impl Plugin for BgPlugin {
 
 pub fn emit_stars(
     time: Res<Time>,
-    mut spawners: Query<(&Children, &mut StarSpawner)>,
+    windows: Res<Windows>,
+    camera_offset: Res<CameraOffset>,
     mut stars: Query<(&mut Star, &mut Visibility, &mut Transform)>,
+    mut spawners: Query<(&Children, &mut StarSpawner)>,
 ) {
     for (children, mut spawner) in spawners.iter_mut() {
         spawner.time.tick(time.delta());
@@ -83,8 +86,10 @@ pub fn emit_stars(
                             star.lifetime = Timer::from_seconds(spawner.lifetime, false);
                             visibility.is_visible = true;
                             transform.translation = Vec3::new(
-                                spawner.canvas_size.x * (2.0 * rand::random::<f32>() - 1.0),
-                                spawner.canvas_size.y * (2.0 * rand::random::<f32>() - 1.0),
+                                (spawner.canvas_size.x * (2.0 * rand::random::<f32>() - 1.0))
+                                    + camera_offset.value.x,
+                                (spawner.canvas_size.y * (2.0 * rand::random::<f32>() - 1.0))
+                                    + camera_offset.value.y,
                                 0.0,
                             );
                             break;

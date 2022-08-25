@@ -1,9 +1,12 @@
 use bevy::prelude::*;
+use bevy::render::camera::RenderTarget;
 use bevy::render::texture::ImageSettings;
+use bevy::utils::HashMap;
 use bevy::{log, window};
 
 use bevy_asset_loader::prelude::*;
 use bevy_inspector_egui::prelude::*;
+use bevy_inspector_egui::Inspectable;
 
 const GAMENAME: &str = "Arc Raiders";
 const GAMECLEAR: Color = Color::rgb(0.03137254902, 0.0, 0.05882352941);
@@ -15,6 +18,13 @@ use tool::debug;
 use tool::xorshift;
 
 mod world;
+
+#[derive(Component)]
+pub struct MainCamera;
+
+pub struct CameraOffset {
+    value: Vec2,
+}
 
 #[derive(Component, Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub enum GameMode {
@@ -54,6 +64,9 @@ fn main() {
         present_mode: window::PresentMode::AutoVsync,
         ..Default::default()
     });
+    app.insert_resource(CameraOffset {
+        value: Vec2::default(),
+    });
 
     // Set state to MainLoading
     app.add_state(AppState::MainLoading).add_loading_state(
@@ -64,6 +77,8 @@ fn main() {
 
     app.add_plugins(DefaultPlugins);
     app.add_plugin(debug::DebugPlugin);
+    app.add_plugin(world::WorldPlugin);
     app.add_plugin(gui::GuiPlugin);
+
     app.run();
 }

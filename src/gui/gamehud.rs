@@ -22,57 +22,58 @@ struct ButtonType {
 struct HudCleanup;
 
 #[derive(Component)]
-struct GamehudCleanup;
+struct HudInitCleanup;
 
 pub struct GamehudPlugin;
 
 impl Plugin for GamehudPlugin {
     fn build(&self, app: &mut App) {
-        let base_grid = AppState::GamePlay(GameMode::BaseGrid);
-        let event_grid = AppState::GamePlay(GameMode::EventGrid);
-        let explore_grid = AppState::GamePlay(GameMode::ExploreGrid);
+        let base_mode = AppState::GamePlay(GameMode::BaseGrid);
+        let event_mode = AppState::GamePlay(GameMode::EventGrid);
+        let explore_mode = AppState::GamePlay(GameMode::ExploreGrid);
 
-        app.add_system_set(SystemSet::on_exit(base_grid).with_system(exit_hud));
-        app.add_system_set(SystemSet::on_enter(base_grid).with_system(enter_hud));
+        // app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_hud));
+        // app.add_system_set(SystemSet::on_enter(base_mode).with_system(enter_hud));
 
-        app.add_system_set(SystemSet::on_exit(base_grid).with_system(exit_state));
-        app.add_system_set(SystemSet::on_pause(base_grid).with_system(exit_state));
-        app.add_system_set(SystemSet::on_enter(base_grid).with_system(enter_base_gameplay));
-        app.add_system_set(SystemSet::on_resume(base_grid).with_system(enter_base_gameplay));
+        app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
+        app.add_system_set(SystemSet::on_pause(base_mode).with_system(exit_state));
+        app.add_system_set(SystemSet::on_enter(base_mode).with_system(enter_base_gameplay));
+        app.add_system_set(SystemSet::on_resume(base_mode).with_system(enter_base_gameplay));
 
-        app.add_system_set(SystemSet::on_exit(event_grid).with_system(exit_state));
-        app.add_system_set(SystemSet::on_pause(event_grid).with_system(exit_state));
-        app.add_system_set(SystemSet::on_enter(event_grid).with_system(enter_event_gameplay));
-        app.add_system_set(SystemSet::on_resume(event_grid).with_system(enter_event_gameplay));
+        app.add_system_set(SystemSet::on_exit(event_mode).with_system(exit_state));
+        app.add_system_set(SystemSet::on_pause(event_mode).with_system(exit_state));
+        app.add_system_set(SystemSet::on_enter(event_mode).with_system(enter_event_gameplay));
+        app.add_system_set(SystemSet::on_resume(event_mode).with_system(enter_event_gameplay));
 
-        app.add_system_set(SystemSet::on_exit(explore_grid).with_system(exit_state));
-        app.add_system_set(SystemSet::on_pause(explore_grid).with_system(exit_state));
-        app.add_system_set(SystemSet::on_enter(explore_grid).with_system(enter_explore_gameplay));
-        app.add_system_set(SystemSet::on_resume(explore_grid).with_system(enter_explore_gameplay));
+        app.add_system_set(SystemSet::on_exit(explore_mode).with_system(exit_state));
+        app.add_system_set(SystemSet::on_pause(explore_mode).with_system(exit_state));
+        app.add_system_set(SystemSet::on_enter(explore_mode).with_system(enter_explore_gameplay));
+        app.add_system_set(SystemSet::on_resume(explore_mode).with_system(enter_explore_gameplay));
 
-        app.add_system_set(SystemSet::on_update(base_grid).with_system(button_update));
-        app.add_system_set(SystemSet::on_update(event_grid).with_system(button_update));
-        app.add_system_set(SystemSet::on_update(explore_grid).with_system(button_update));
+        app.add_system_set(
+            SystemSet::on_update(base_mode).with_system(button_update.label("gui-update")),
+        );
+        app.add_system_set(
+            SystemSet::on_update(event_mode).with_system(button_update.label("gui-update")),
+        );
+        app.add_system_set(
+            SystemSet::on_update(explore_mode).with_system(button_update.label("gui-update")),
+        );
     }
 }
 
-fn exit_hud(mut commands: Commands, query: Query<Entity, With<HudCleanup>>) {
-    log::info!("exit_state");
-    for e in query.iter() {
-        commands.entity(e).despawn_recursive();
-    }
-}
+// fn exit_hud(mut commands: Commands, query: Query<Entity, With<HudInitCleanup>>) {
+//     log::info!("exit_hud");
+//     for e in query.iter() {
+//         commands.entity(e).despawn_recursive();
+//     }
+// }
 
-fn enter_hud(mut commands: Commands) {
-    log::info!("enter_gamehud");
+// fn enter_hud(mut commands: Commands) {
+//     log::info!("enter_hud");
+// }
 
-    commands
-        .spawn_bundle(Camera2dBundle::default())
-        .insert(Name::new("gamehud-camera"))
-        .insert(HudCleanup);
-}
-
-fn exit_state(mut commands: Commands, query: Query<Entity, With<GamehudCleanup>>) {
+fn exit_state(mut commands: Commands, query: Query<Entity, With<HudCleanup>>) {
     log::info!("exit_state");
     for e in query.iter() {
         commands.entity(e).despawn_recursive();
@@ -81,6 +82,7 @@ fn exit_state(mut commands: Commands, query: Query<Entity, With<GamehudCleanup>>
 
 fn button_update(
     mut state: ResMut<State<AppState>>,
+    mut buttons: ResMut<Input<MouseButton>>,
     mut button_query: Query<
         (&Interaction, &ButtonType, &mut UiColor, &mut Transform),
         (Changed<Interaction>, With<Button>),
@@ -89,8 +91,9 @@ fn button_update(
     for (interaction, button_type, mut color, mut transform) in &mut button_query {
         match *interaction {
             Interaction::Clicked => {
-                *color = gui::PRESSED_BUTTON.into();
+                buttons.clear();
                 transform.scale *= 1.05;
+                *color = gui::PRESSED_BUTTON.into();
                 handle_btn_update_click(button_type.key, &mut state);
             }
             Interaction::Hovered => {
@@ -140,8 +143,6 @@ fn handle_btn_update_click(button_key: ButtonKey, state: &mut ResMut<State<AppSt
     }
 }
 
-//////////
-
 fn enter_base_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
     log::info!("enter_base_gameplay");
 
@@ -164,7 +165,7 @@ fn enter_base_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
             ..default()
         })
         .insert(Name::new("event-menu"))
-        .insert(GamehudCleanup)
+        .insert(HudCleanup)
         .id();
 
     let mut list = Vec::new();
@@ -215,7 +216,7 @@ fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
             ..default()
         })
         .insert(Name::new("event-menu"))
-        .insert(GamehudCleanup)
+        .insert(HudCleanup)
         .id();
 
     let mut list = Vec::new();
@@ -256,7 +257,7 @@ fn enter_explore_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
             ..default()
         })
         .insert(Name::new("hex-menu"))
-        .insert(GamehudCleanup)
+        .insert(HudCleanup)
         .id();
 
     let mut list = Vec::new();

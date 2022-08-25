@@ -89,13 +89,22 @@ fn update_btn_exit(
     }
 }
 
-fn enter_mainmenu(mut commands: Commands, app_assets: Res<AppAssets>) {
+fn enter_mainmenu(
+    mut commands: Commands,
+    app_assets: Res<AppAssets>,
+    mut camera_offset: ResMut<CameraOffset>,
+) {
     log::info!("enter_mainmenu");
 
     commands
         .spawn_bundle(Camera2dBundle::default())
         .insert(Name::new("gui-camera"))
-        .insert(MainMenuCleanup);
+        .insert(MainMenuCleanup)
+        .insert(MainCamera);
+
+    // Reset the camera offset
+    camera_offset.value.x = 0.;
+    camera_offset.value.y = 0.;
 
     let root = commands
         .spawn_bundle(NodeBundle {
