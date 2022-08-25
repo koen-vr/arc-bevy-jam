@@ -1,6 +1,7 @@
 use bevy::app::AppExit;
 
 use crate::gui;
+use crate::world;
 use crate::*;
 
 #[derive(Component)]
@@ -95,9 +96,10 @@ fn enter_mainmenu(
     mut camera_offset: ResMut<CameraOffset>,
 ) {
     log::info!("enter_mainmenu");
-
+    let mut camera_bundle = Camera2dBundle::default();
+    camera_bundle.projection.scale = world::CAMERA_ZOOM_EXPLORE;
     commands
-        .spawn_bundle(Camera2dBundle::default())
+        .spawn_bundle(camera_bundle)
         .insert(Name::new("gui-camera"))
         .insert(MainMenuCleanup)
         .insert(MainCamera);

@@ -1,94 +1,278 @@
-use bevy::render::camera::RenderTarget;
-use bevy_inspector_egui::Inspectable;
+use super::*;
 
-use crate::*;
+pub mod math;
+pub use math::*;
 
-#[derive(Default, Component, Inspectable)]
-pub struct HexActive {}
+pub mod orient;
+pub use orient::*;
 
-pub struct HexmapPlugin;
+pub mod storage;
+pub use storage::*;
 
-impl Plugin for HexmapPlugin {
+pub mod utilities;
+pub use utilities::*;
+
+struct Grid {
+    pub radius: i32,
+    pub layout: Layout,
+}
+
+#[derive(Component)]
+struct GridRoot;
+
+#[derive(Component)]
+struct CleanupGrid;
+
+#[derive(Component)]
+struct CleanupGridGame;
+
+pub struct GridPlugin;
+
+impl Plugin for GridPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system_to_stage(StartupStage::PreStartup, setup);
-        app.add_startup_system_to_stage(StartupStage::PostStartup, spawn_nodes);
-        app.add_system(active_node);
+        let base_mode = AppState::GamePlay(GameMode::BaseGrid);
+        let explore_mode = AppState::GamePlay(GameMode::ExploreGrid);
+
+        app.register_inspectable::<GridTarget>();
+        app.register_inspectable::<GridMovement>();
+
+        app.insert_resource(Grid {
+            radius: 38,
+            layout: Layout {
+                size: Vec2 {
+                    x: TILE_SIZE,
+                    y: TILE_SIZE,
+                },
+                style: orient::Style::Pointy,
+                origin: Vec2 { x: 0., y: 0. },
+                matrix: Orientation::new(orient::Style::Pointy),
+            },
+        });
+
+        app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
+        app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_grid_game));
+        // app.add_system_set(SystemSet::on_enter(base_mode).with_system(enter_grid_game));
+
+        app.add_system_set(SystemSet::on_exit(explore_mode).with_system(exit_state));
+        app.add_system_set(SystemSet::on_enter(explore_mode).with_system(spawn_explore_movement));
+
+        app.add_system_set(SystemSet::on_pause(explore_mode).with_system(pause_explore_movement));
+        app.add_system_set(SystemSet::on_resume(explore_mode).with_system(resume_explore_movement));
+
+        app.add_system_set(SystemSet::on_enter(explore_mode).with_system(spawn_grid_nodes));
+        app.add_system_set(SystemSet::on_pause(explore_mode).with_system(pause_grid_nodes));
+        app.add_system_set(SystemSet::on_resume(explore_mode).with_system(resume_grid_nodes));
     }
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let sprite_handle = asset_server.load("hex-pointy-64.2.png");
-
-    commands
-        .spawn_bundle(SpriteBundle {
-            texture: sprite_handle.clone(),
-            ..default()
-        })
-        .insert(HexActive {});
+fn exit_state(mut commands: Commands, query: Query<Entity, With<CleanupGrid>>) {
+    for e in query.iter() {
+        commands.entity(e).despawn_recursive();
+    }
 }
 
-fn spawn_nodes(mut commands: Commands, asset_server: Res<AssetServer>) {
+////////////////////////////////
+/// Game Setup - Shared Objects
+////////////////////////////////
+
+fn exit_grid_game(mut commands: Commands, query: Query<Entity, With<CleanupGridGame>>) {
+    log::info!("exit_grid_game");
+    for e in query.iter() {
+        commands.entity(e).despawn_recursive();
+    }
+}
+
+// fn enter_grid_game(mut commands: Commands) {
+//     // TODO: Seed selection gui
+//     log::info!("enter_grid_game");
+// }
+
+fn spawn_explore_movement(mut commands: Commands, world_assets: Res<WorldAssets>) {
+    log::info!("spawn_explore_movement");
+    let mut hex = SpriteBundle {
+        texture: world_assets.pointy_hex64_b.clone(),
+        ..default()
+    };
+    hex.visibility.is_visible = true;
+    hex.transform.translation = Vec3::new(0.0, 0.0, 1.0);
+    commands
+        .spawn_bundle(hex)
+        .insert(Name::new("hex-target"))
+        .insert(GridTargetHex)
+        .insert(CleanupGrid);
+}
+
+fn pause_explore_movement(mut grid_root: Query<&mut Visibility, With<GridRoot>>) {
+    for mut visibility in grid_root.iter_mut() {
+        visibility.is_visible = false;
+    }
+}
+
+fn resume_explore_movement(mut grid_root: Query<&mut Visibility, With<GridRoot>>) {
+    for mut visibility in grid_root.iter_mut() {
+        visibility.is_visible = true;
+    }
+}
+
+fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<WorldAssets>) {
+    // Main Grid nodes
+    _spawn_grid_node(
+        &mut commands,
+        &world_assets,
+        Color::rgba(0.6, 0.4, 0.6, 0.3),
+        HexNode::new(
+            grid.layout.size,
+            grid.layout.style,
+            grid.layout.origin,
+            grid.radius,
+        ),
+    );
+
+    // Sub grid nodes
+    let offset = 24;
+    _spawn_grid_node(
+        &mut commands,
+        &world_assets,
+        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        HexNode::new(
+            Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
+            },
+            orient::Style::Pointy,
+            grid.layout.center_for(&Axial { q: -offset, r: 0 }),
+            12,
+        ),
+    );
+    _spawn_grid_node(
+        &mut commands,
+        &world_assets,
+        Color::rgba(0.8, 0.6, 0.8, 0.8),
+        HexNode::new(
+            Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
+            },
+            orient::Style::Pointy,
+            grid.layout.center_for(&Axial { q: 0, r: -offset }),
+            12,
+        ),
+    );
+    _spawn_grid_node(
+        &mut commands,
+        &world_assets,
+        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        HexNode::new(
+            Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
+            },
+            orient::Style::Pointy,
+            grid.layout.center_for(&Axial {
+                q: -offset,
+                r: offset,
+            }),
+            12,
+        ),
+    );
+
+    _spawn_grid_node(
+        &mut commands,
+        &world_assets,
+        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        HexNode::new(
+            Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
+            },
+            orient::Style::Pointy,
+            Vec2 { x: 0., y: 0. },
+            12,
+        ),
+    );
+
+    _spawn_grid_node(
+        &mut commands,
+        &world_assets,
+        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        HexNode::new(
+            Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
+            },
+            orient::Style::Pointy,
+            grid.layout.center_for(&Axial { q: offset, r: 0 }),
+            12,
+        ),
+    );
+    _spawn_grid_node(
+        &mut commands,
+        &world_assets,
+        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        HexNode::new(
+            Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
+            },
+            orient::Style::Pointy,
+            grid.layout.center_for(&Axial { q: 0, r: offset }),
+            12,
+        ),
+    );
+    _spawn_grid_node(
+        &mut commands,
+        &world_assets,
+        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        HexNode::new(
+            Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
+            },
+            orient::Style::Pointy,
+            grid.layout.center_for(&Axial {
+                q: offset,
+                r: -offset,
+            }),
+            12,
+        ),
+    );
+}
+
+fn _spawn_grid_node(
+    commands: &mut Commands,
+    world_assets: &Res<WorldAssets>,
+    color: Color,
+    source: HexNode,
+) {
     // Initialize a hex storage component for data
     // let mut node_storage = HexStorage::default();
 
-    // Create a node used to spawn hex grids
-    let mut node = HexNode::new(
-        Vec2 { x: 0., y: 0. },
-        Vec2 { x: 34., y: 34. },
-        orient::Style::Pointy,
-    );
+    let mut node = source.clone();
 
     // Setup the node entity and spawn the grid
     let name = format!("node-{}:{}", 0, 0);
     let node_id = commands.spawn().insert(Name::new(name)).id();
-    let list = node.spawn_entities(node_id, &mut commands, &asset_server);
+    let list = node.spawn_entities(color, node_id, commands, &world_assets);
 
     // Finalize hex node and entities as children
     commands
         .entity(node_id)
         .insert_bundle(VisibilityBundle::default())
         .insert_bundle(TransformBundle::default())
+        .insert(CleanupGrid)
+        .insert(GridRoot)
         .insert(node)
         .push_children(&list);
 }
 
-fn active_node(
-    windows: Res<Windows>,
-    mut hex_query: Query<(&HexActive, &mut Transform)>,
-    camera_query: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
-) {
-    let (camera, camera_transform) = camera_query.single();
-    let (_, mut hex_transform) = hex_query.single_mut();
+fn pause_grid_nodes(mut nodes_query: Query<&mut Visibility, With<GridTargetHex>>) {
+    for mut visibility in nodes_query.iter_mut() {
+        visibility.is_visible = false;
+    }
+}
 
-    // get the window that the camera is displaying to (or the primary window)
-    let wnd = if let RenderTarget::Window(id) = camera.target {
-        windows.get(id).unwrap()
-    } else {
-        windows.get_primary().unwrap()
-    };
-
-    if let Some(screen_pos) = wnd.cursor_position() {
-        let node = HexNode::new(
-            Vec2 { x: 0., y: 0. },
-            Vec2 { x: 34., y: 34. },
-            orient::Style::Pointy,
-        );
-
-        // Convert window position to gpu coordinates
-        let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
-        let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
-        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
-
-        // use it to convert ndc to world-space coordinates
-        let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
-
-        let hex = node.layout.hex_for(Vec2 {
-            x: world_pos.x,
-            y: world_pos.y,
-        });
-        let pos = node.layout.center_for(&hex);
-
-        hex_transform.translation.x = pos.x;
-        hex_transform.translation.y = pos.y;
+fn resume_grid_nodes(mut nodes_query: Query<&mut Visibility, With<GridTargetHex>>) {
+    for mut visibility in nodes_query.iter_mut() {
+        visibility.is_visible = true;
     }
 }

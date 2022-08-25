@@ -1,6 +1,3 @@
-use bevy::prelude::*;
-use bevy_inspector_egui::Inspectable;
-
 use super::*;
 
 #[derive(Component, Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Inspectable)]
@@ -45,6 +42,7 @@ pub struct HexBundle {
 
 #[derive(Component, Clone, Debug, Default)]
 pub struct HexNode {
+    pub radius: i32,
     pub layout: Layout,
     pub hexgrid: HashMap<Axial, Option<Entity>>,
 }
@@ -55,12 +53,13 @@ pub struct HexStorage {
 }
 
 impl HexNode {
-    pub fn new(origin: Vec2, radius: Vec2, style: orient::Style) -> Self {
+    pub fn new(size: Vec2, style: orient::Style, origin: Vec2, radius: i32) -> Self {
         Self {
+            radius: radius,
             layout: Layout {
+                size: size,
+                style: style.clone(),
                 origin,
-                radius,
-                layout: style.clone(),
                 matrix: Orientation::new(style),
             },
             hexgrid: HashMap::new(),
@@ -69,34 +68,38 @@ impl HexNode {
 
     pub fn spawn_entities(
         &mut self,
+        color: Color,
         node_id: Entity,
         commands: &mut Commands,
-        asset_server: &Res<AssetServer>,
+        world_assets: &Res<WorldAssets>,
     ) -> Vec<Entity> {
         // Collections setup
         let mut list = Vec::new();
         let mut grid = HashMap::new();
 
-        let sprite = asset_server.load("hex-pointy-64.1.png");
-
         // Spawn hex grid entities
-        let radius = 12;
-        for q in -radius..(radius + 1) {
-            let r1 = i32::max(-radius, -q - radius);
-            let r2 = i32::min(radius, -q + radius);
+        for q in -self.radius..(self.radius + 1) {
+            let r1 = i32::max(-self.radius, -q - self.radius);
+            let r2 = i32::min(self.radius, -q + self.radius);
             for r in r1..(r2 + 1) {
                 let hex = Axial { q, r };
                 let name = format!("hex-{}:{}", q, r);
                 let pos = self.layout.center_for(&hex);
+                let bundle = SpriteBundle {
+                    sprite: Sprite {
+                        color: color,
+                        custom_size: Some(Vec2::splat(TILE_SIZE * 2.)),
+                        ..Default::default()
+                    },
+                    texture: world_assets.pointy_hex64_a.clone(),
+                    transform: Transform {
+                        translation: Vec3::new(pos.x, pos.y, 10.0),
+                        ..Default::default()
+                    },
+                    ..default()
+                };
                 let entity = commands
-                    .spawn_bundle(SpriteBundle {
-                        texture: sprite.clone(),
-                        transform: Transform {
-                            translation: Vec3::new(pos.x, pos.y, 10.0),
-                            ..Default::default()
-                        },
-                        ..default()
-                    })
+                    .spawn_bundle(bundle)
                     .insert_bundle(HexBundle {
                         position: hex.into(),
                         texture: HexTexture(0),

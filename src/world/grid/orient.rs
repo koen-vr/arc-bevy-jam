@@ -9,9 +9,9 @@ pub enum Style {
 
 #[derive(Clone, Default, Debug)]
 pub struct Layout {
+    pub size: Vec2,
+    pub style: Style,
     pub origin: Vec2,
-    pub radius: Vec2,
-    pub layout: Style,
     pub matrix: Orientation,
 }
 
@@ -76,11 +76,11 @@ impl Orientation {
     }
 }
 impl Layout {
-    pub fn new(origin: Vec2, radius: Vec2, style: Style) -> Self {
+    pub fn new(size: Vec2, style: Style, origin: Vec2, radius: i32) -> Self {
         Layout {
+            size,
+            style,
             origin,
-            radius,
-            layout: style,
             matrix: Orientation::new(style),
         }
     }
@@ -88,28 +88,28 @@ impl Layout {
     pub fn hex_for(&self, val: Vec2) -> Axial {
         let x = val.x - self.origin.x;
         let y = val.y - self.origin.y;
-        let q = (self.matrix.b[0] * x + self.matrix.b[1] * y) / self.radius.x;
-        let r = (self.matrix.b[2] * x + self.matrix.b[3] * y) / self.radius.y;
+        let q = (self.matrix.b[0] * x + self.matrix.b[1] * y) / self.size.x;
+        let r = (self.matrix.b[2] * x + self.matrix.b[3] * y) / self.size.y;
         return f32_to_axial(q, -q - r, r);
     }
 
     pub fn hex_size(&self) -> Vec2 {
-        match self.layout {
+        match self.style {
             Style::Flat => Vec2 {
-                x: 2. * self.radius.x,
-                y: f32::sqrt(3.) * self.radius.y,
+                x: 2. * self.size.x,
+                y: f32::sqrt(3.) * self.size.y,
             },
             Style::Pointy => Vec2 {
-                x: f32::sqrt(3.) * self.radius.x,
-                y: 2. * self.radius.y,
+                x: f32::sqrt(3.) * self.size.x,
+                y: 2. * self.size.y,
             },
         }
     }
 
     pub fn center_for(&self, hex: &Axial) -> Vec2 {
         let (q, r) = (hex.q as f32, hex.r as f32);
-        let x = (self.matrix.f[0] * q + self.matrix.f[1] * r) * self.radius.x;
-        let y = (self.matrix.f[2] * q + self.matrix.f[3] * r) * self.radius.y;
+        let x = (self.matrix.f[0] * q + self.matrix.f[1] * r) * self.size.x;
+        let y = (self.matrix.f[2] * q + self.matrix.f[3] * r) * self.size.y;
         return Vec2 {
             x: x + self.origin.x,
             y: y + self.origin.y,
@@ -130,7 +130,7 @@ impl Layout {
 
     pub fn ring_for(&self, center: &Axial, rad: f32) -> HashMap<Axial, bool> {
         let mut result = HashMap::new();
-        if rad < self.radius.x && rad < self.radius.y {
+        if rad < self.size.x && rad < self.size.y {
             result.insert(center.clone(), true);
             return result;
         }

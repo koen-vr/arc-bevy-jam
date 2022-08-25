@@ -1,14 +1,7 @@
-use bevy::prelude::*;
-use bevy::utils::HashMap;
-
-pub mod orient;
-pub(crate) use orient::*;
-
-mod storage;
-pub(crate) use storage::*;
+use super::*;
 
 #[derive(Clone, Copy)]
-enum Diagonal {
+pub enum Diagonal {
     QNeg, // {-2,  1,  1},
     QPos, // { 2, -1, -1},
     RNeg, // { 1, -2,  1},
@@ -19,7 +12,7 @@ enum Diagonal {
 }
 
 #[derive(Clone, Copy)]
-enum Direction {
+pub enum Direction {
     QNeg, // {-1,  0,  1},
     QPos, // { 1,  0, -1},
     RNeg, // { 1, -1,  0},
@@ -49,7 +42,7 @@ pub struct Point {
 }
 
 impl Diagonal {
-    fn delta(&self) -> Cuboid {
+    pub fn delta(&self) -> Cuboid {
         match self {
             Diagonal::QNeg => Cuboid { q: -2, r: 1, s: 1 },
             Diagonal::QPos => Cuboid { q: 2, r: -1, s: -1 },
@@ -63,7 +56,7 @@ impl Diagonal {
 }
 
 impl Direction {
-    fn delta(&self) -> Cuboid {
+    pub fn delta(&self) -> Cuboid {
         match self {
             Direction::QNeg => Cuboid { q: -1, r: 0, s: 1 },
             Direction::QPos => Cuboid { q: 1, r: 0, s: -1 },
@@ -77,7 +70,7 @@ impl Direction {
 }
 
 impl Axial {
-    fn delta(&self, rh: &Axial) -> Cuboid {
+    pub fn delta(&self, rh: &Axial) -> Cuboid {
         let q = self.q - rh.q;
         let r = self.r - rh.r;
         Cuboid {
@@ -87,7 +80,7 @@ impl Axial {
         }
     }
 
-    fn neighbor(&self, d: Direction) -> Axial {
+    pub fn neighbor(&self, d: Direction) -> Axial {
         let dir = d.delta();
         Axial {
             q: self.q + dir.q,
@@ -95,7 +88,7 @@ impl Axial {
         }
     }
 
-    fn line(a: &Axial, b: &Axial) -> Vec<Axial> {
+    pub fn line(a: &Axial, b: &Axial) -> Vec<Axial> {
         let delta = a.delta(b);
 
         let n = delta.length();
@@ -112,7 +105,7 @@ impl Axial {
         for h in 0..n {
             let t = step * (h as f32);
             let mut pnt = f32_to_axial(ax + x * t, ay + y * t, az + z * t);
-            while let Some(v) = visited.get(&pnt) {
+            while let Some(_v) = visited.get(&pnt) {
                 pnt = pnt.neighbor(dir)
             }
             result.push(pnt);
@@ -128,7 +121,7 @@ impl Axial {
 }
 
 impl Cuboid {
-    fn abs(&self) -> Cuboid {
+    pub fn abs(&self) -> Cuboid {
         Cuboid {
             q: i32::abs(self.q),
             r: i32::abs(self.r),
@@ -136,11 +129,11 @@ impl Cuboid {
         }
     }
 
-    fn length(&self) -> i32 {
+    pub fn length(&self) -> i32 {
         (i32::abs(self.q) + i32::abs(self.r) + i32::abs(self.s)) >> 1
     }
 
-    fn direction(&self) -> Direction {
+    pub fn direction(&self) -> Direction {
         let abs = self.abs();
         if abs.q >= abs.r && abs.q >= abs.s {
             if self.q < 0 {
@@ -163,9 +156,9 @@ impl Cuboid {
 
 impl Point {}
 
-fn f32_to_axial(x: f32, y: f32, z: f32) -> Axial {
+pub(crate) fn f32_to_axial(x: f32, y: f32, z: f32) -> Axial {
     let mut rx = f32::round(x);
-    let mut ry = f32::round(y);
+    let ry = f32::round(y);
     let mut rz = f32::round(z);
 
     let dx = f32::abs(rx - x);
@@ -176,8 +169,6 @@ fn f32_to_axial(x: f32, y: f32, z: f32) -> Axial {
         rx = -rz - ry
     } else if dz > dy {
         rz = -rx - ry
-    } else {
-        ry = -rx - rz
     }
 
     return Axial {

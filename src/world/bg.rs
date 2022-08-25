@@ -71,7 +71,6 @@ impl Plugin for BgPlugin {
 
 pub fn emit_stars(
     time: Res<Time>,
-    windows: Res<Windows>,
     camera_offset: Res<CameraOffset>,
     mut stars: Query<(&mut Star, &mut Visibility, &mut Transform)>,
     mut spawners: Query<(&Children, &mut StarSpawner)>,
@@ -102,20 +101,20 @@ pub fn emit_stars(
 }
 
 pub fn spawn_stars_spawner(mut commands: Commands) {
-    let rate = 0.2;
+    let rate = 0.1;
     let spawner = StarSpawner {
         time: Timer::from_seconds(rate, true),
-        per_burst: 4,
+        per_burst: 6,
         // Note: Hard Coded: Window Size
         canvas_size: Vec2 {
-            x: 1200.0,
-            y: 600.0,
+            x: 1200.0 * 1.8,
+            y: 600.0 * 1.8,
         },
         rate: rate,
-        lifetime: 12.5,
+        lifetime: 7.5,
         size: StarSize {
-            start: 0.0,
-            end: 2.5,
+            start: 0.5,
+            end: 3.5,
         },
         color: StarColor {
             start: Color::ORANGE,
@@ -182,7 +181,7 @@ pub fn update_stars(
     }
 }
 
-fn lerp(i: f32, j: f32, t: f32) -> f32 {
+pub fn lerp(i: f32, j: f32, t: f32) -> f32 {
     return i * (1.0 - t) + j * t;
 }
 
