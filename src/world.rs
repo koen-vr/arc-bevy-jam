@@ -6,8 +6,8 @@ use bg::*;
 mod grid;
 use grid::*;
 
-// mod mode;
-// use mode::*;
+pub mod mode;
+pub use mode::*;
 
 mod player;
 use player::*;
@@ -39,6 +39,10 @@ pub struct WorldAssets {
     pointy_hex64_a: Handle<Image>,
     #[asset(path = "hex-pointy-64.2.png")]
     pointy_hex64_b: Handle<Image>,
+    #[asset(path = "Ship-7.png")]
+    ship_7: Handle<Image>,
+    #[asset(path = "Ship-17.png")]
+    ship_17: Handle<Image>,
 }
 
 pub struct WorldPlugin;
@@ -56,6 +60,7 @@ impl Plugin for WorldPlugin {
         app.add_plugin(BgPlugin);
         app.add_plugin(GridPlugin);
         app.add_plugin(PlayerPlugin);
+        app.add_plugin(BaseModePlugin);
         // app.add_plugin(EventModePlugin);
         // app.add_plugin(ExploreModePlugin);
     }

@@ -58,6 +58,6 @@ wasm-bindgen --no-typescript --out-name arc-demo --out-dir wasm --target web tar
 Read more: [Managing releases in a repository](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
 
 ~~~
-git tag -a "Arc-Proto-1.0" -m "release: v1.0"
+git tag -a "arc-proto-1.0" -m "Arc-Proto Release: v1.0"
 git push --tags
 ~~~
