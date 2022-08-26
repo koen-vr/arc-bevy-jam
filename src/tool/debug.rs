@@ -16,11 +16,11 @@ impl Plugin for DebugPlugin {
                 .add_plugin(FrameTimeDiagnosticsPlugin::default());
         }
         if ENABLE_INSPECTOR {
+            app.add_plugin(WorldInspectorPlugin::new());
             app.insert_resource(WorldInspectorParams {
                 enabled: false,
                 ..Default::default()
             });
-            app.add_plugin(WorldInspectorPlugin::new());
             app.add_system(toggle_world_inspector);
         }
     }
@@ -30,7 +30,7 @@ fn toggle_world_inspector(
     input: ResMut<Input<KeyCode>>,
     mut window_params: ResMut<WorldInspectorParams>,
 ) {
-    if input.just_pressed(KeyCode::Grave) {
+    if ENABLE_INSPECTOR && input.just_pressed(KeyCode::Grave) {
         window_params.enabled = !window_params.enabled
     }
 }

@@ -48,8 +48,10 @@ impl Plugin for PlayerPlugin {
             ..Default::default()
         });
 
-        app.register_inspectable::<Player>();
-        app.register_inspectable::<EnergyRecource>();
+        if tool::debug::ENABLE_INSPECTOR {
+            app.register_inspectable::<Player>();
+            app.register_inspectable::<EnergyRecource>();
+        }
 
         // Player Setup Systems
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));

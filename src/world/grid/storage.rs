@@ -7,7 +7,7 @@ const MIN_RADIUS: f32 = 192. + 64.;
 const AVR_RADIUS: f32 = 256. + 64.;
 const MAX_RADIUS: f32 = 384. + 64.;
 
-#[derive(Component, Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Inspectable)]
+#[derive(Component, Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd)]
 pub struct HexPosition {
     pub x: i32,
     pub y: i32,
@@ -28,10 +28,10 @@ impl From<Axial> for HexPosition {
     }
 }
 
-#[derive(Component, Clone, Copy, Debug, Default, Hash, Inspectable)]
+#[derive(Component, Clone, Copy, Debug, Default, Hash)]
 pub struct HexTexture(pub u32);
 
-#[derive(Component, Clone, Copy, Debug, Hash, Inspectable, Reflect)]
+#[derive(Component, Clone, Copy, Debug, Hash)]
 pub struct HexNodeId(pub Entity);
 
 impl Default for HexNodeId {
@@ -235,7 +235,7 @@ impl HexNode {
 
             let pos = Vec2 {
                 x: ((pnt.x as f32) - offset_x) + self.layout.origin.x,
-                y: ((-pnt.y as f32) - offset_y) + self.layout.origin.y,
+                y: ((pnt.y as f32) - offset_y) + self.layout.origin.y,
             };
             points.push(
                 commands

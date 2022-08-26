@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use super::*;
 
 pub mod math;
@@ -35,8 +33,10 @@ impl Plugin for GridPlugin {
         let base_mode = AppState::GamePlay(GameMode::BaseGrid);
         let explore_mode = AppState::GamePlay(GameMode::ExploreGrid);
 
-        app.register_inspectable::<GridTarget>();
-        app.register_inspectable::<GridMovement>();
+        if tool::debug::ENABLE_INSPECTOR {
+            app.register_inspectable::<GridTarget>();
+            app.register_inspectable::<GridMovement>();
+        }
 
         app.insert_resource(Grid {
             radius: 38,
@@ -50,12 +50,8 @@ impl Plugin for GridPlugin {
                 matrix: Orientation::new(orient::Style::Pointy),
             },
         });
-        app.insert_resource(Shift64::new(
-            SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("Time went backwards")
-                .as_secs() as i64,
-        ));
+
+        app.insert_resource(Shift64::new(rand::random::<i64>()));
 
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_grid_game));
