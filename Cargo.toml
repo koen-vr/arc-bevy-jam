@@ -13,9 +13,23 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-bevy = { version = "0.8", features = ["dynamic"] }
 bevy_asset_loader = { version = "0.12", features = ["2d"] }
 bevy-inspector-egui = { version = "0.12" }
 byteorder = "1.4"
 sha2 = "0.10"
 rand = "0.8"
+
+[target.x86_64-apple-darwin.dependencies]
+bevy = { version = "0.8"}
+
+[target.x86_64-pc-windows-msvc.dependencies]
+bevy = { version = "0.8"}
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+bevy = { version = "0.8"}
+
+[target.wasm32-unknown-unknown.dependencies]
+bevy = { version = "0.8"}
+
+[dev-dependencies]
+bevy = { version = "0.8", features = ["dynamic"] }

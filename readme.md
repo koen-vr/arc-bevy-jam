@@ -53,16 +53,11 @@ cargo build --release --target wasm32-unknown-unknown
 wasm-bindgen --no-typescript --out-name arc-demo --out-dir wasm --target web target/wasm32-unknown-unknown/release/arc-demo.wasm
 ~~~
 
-## Manual Build Setup
+## Tag GIT from release trough CLI
 
-Web Build
-~~~
-bevy = { version = "0.8" }
-~~~
+Read more: [Managing releases in a repository](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
 
-Desktop / Development
 ~~~
-bevy = { version = "0.8", features = ["dynamic"] }
+git tag -a "Arc-Proto-1.0" -m "release: v1.0"
+git push --tags
 ~~~
-
-**TODO: Rust msut have a better solution for this**
