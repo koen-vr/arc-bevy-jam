@@ -40,3 +40,29 @@ World -> Mode   -> Dynamic Entities
 World -> Player -> Player Driven Entities
 ~~~
 
+## Web Build
+
+~~~
+npm install http-server -g
+http-server ./wasm
+~~~
+
+~~~
+cargo install wasm-bindgen-cli
+cargo build --release --target wasm32-unknown-unknown
+wasm-bindgen --no-typescript --out-name arc-demo --out-dir wasm --target web target/wasm32-unknown-unknown/release/arc-demo.wasm
+~~~
+
+## Manual Build Setup
+
+Web Build
+~~~
+bevy = { version = "0.8" }
+~~~
+
+Desktop / Development
+~~~
+bevy = { version = "0.8", features = ["dynamic"] }
+~~~
+
+**TODO: Rust msut have a better solution for this**
