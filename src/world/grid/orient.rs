@@ -193,4 +193,9 @@ impl Layout {
         }
         return result;
     }
+
+    pub fn is_in_range(&self, p: Vec2, radius: i32) -> bool {
+        let h = self.hex_for(p);
+        h.distance(&Axial { q: 0, r: 0 }) < radius
+    }
 }

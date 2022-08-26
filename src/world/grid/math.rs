@@ -35,7 +35,7 @@ pub struct Cuboid {
     pub s: i32,
 }
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
@@ -78,6 +78,12 @@ impl Axial {
             r: r,
             s: -q - r,
         }
+    }
+
+    pub fn distance(&self, other: &Axial) -> i32 {
+        let dq = self.q - other.q;
+        let dr = self.r - other.r;
+        return (i32::abs(dq) + i32::abs(dr) + i32::abs(dr + dq)) >> 1;
     }
 
     pub fn neighbor(&self, d: Direction) -> Axial {
@@ -154,7 +160,13 @@ impl Cuboid {
     }
 }
 
-impl Point {}
+impl Point {
+    pub fn distance(&self, other: &Point) -> f32 {
+        let dx = (self.x - other.x) as f64;
+        let dy = (self.y - other.y) as f64;
+        return f64::sqrt((dx * dx) + (dy * dy)) as f32;
+    }
+}
 
 pub(crate) fn f32_to_axial(x: f32, y: f32, z: f32) -> Axial {
     let mut rx = f32::round(x);

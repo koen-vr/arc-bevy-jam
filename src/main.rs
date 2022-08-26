@@ -15,7 +15,7 @@ mod gui;
 
 mod tool;
 use tool::debug;
-use tool::xorshift;
+use tool::xorshift::*;
 
 mod world;
 

@@ -29,3 +29,14 @@ Game States - Push Pop
 => Base Grid -> Explore Grid -> Event Grid
 <= Base Grid <- Explore Grid <- Event Grid
 ~~~
+
+~~~
+GUI -> Gamehud -> Base
+GUI -> Gamehud -> Event
+GUI -> Gamehud -> Explore
+
+World -> Grid   -> Static Entities
+World -> Mode   -> Dynamic Entities
+World -> Player -> Player Driven Entities
+~~~
+

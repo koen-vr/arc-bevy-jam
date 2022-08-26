@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use super::*;
 
 pub mod math;
@@ -48,6 +50,12 @@ impl Plugin for GridPlugin {
                 matrix: Orientation::new(orient::Style::Pointy),
             },
         });
+        app.insert_resource(Shift64::new(
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_secs() as i64,
+        ));
 
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_grid_game));
@@ -114,11 +122,18 @@ fn resume_explore_movement(mut grid_root: Query<&mut Visibility, With<GridRoot>>
     }
 }
 
-fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<WorldAssets>) {
+fn spawn_grid_nodes(
+    mut commands: Commands,
+    grid: Res<Grid>,
+    mut rng: ResMut<Shift64>,
+    world_assets: Res<WorldAssets>,
+) {
     // Main Grid nodes
     _spawn_grid_node(
         &mut commands,
         &world_assets,
+        false,
+        rng.shift(),
         Color::rgba(0.6, 0.4, 0.6, 0.3),
         HexNode::new(
             grid.layout.size,
@@ -133,7 +148,9 @@ fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<W
     _spawn_grid_node(
         &mut commands,
         &world_assets,
-        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        true,
+        rng.shift(),
+        Color::rgba(0.8, 0.6, 0.8, 0.2),
         HexNode::new(
             Vec2 {
                 x: TILE_SIZE,
@@ -147,7 +164,9 @@ fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<W
     _spawn_grid_node(
         &mut commands,
         &world_assets,
-        Color::rgba(0.8, 0.6, 0.8, 0.8),
+        true,
+        rng.shift(),
+        Color::rgba(0.8, 0.6, 0.8, 0.2),
         HexNode::new(
             Vec2 {
                 x: TILE_SIZE,
@@ -161,7 +180,9 @@ fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<W
     _spawn_grid_node(
         &mut commands,
         &world_assets,
-        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        true,
+        rng.shift(),
+        Color::rgba(0.8, 0.6, 0.8, 0.2),
         HexNode::new(
             Vec2 {
                 x: TILE_SIZE,
@@ -179,7 +200,9 @@ fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<W
     _spawn_grid_node(
         &mut commands,
         &world_assets,
-        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        true,
+        rng.shift(),
+        Color::rgba(0.8, 0.6, 0.8, 0.2),
         HexNode::new(
             Vec2 {
                 x: TILE_SIZE,
@@ -194,7 +217,9 @@ fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<W
     _spawn_grid_node(
         &mut commands,
         &world_assets,
-        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        true,
+        rng.shift(),
+        Color::rgba(0.8, 0.6, 0.8, 0.2),
         HexNode::new(
             Vec2 {
                 x: TILE_SIZE,
@@ -208,7 +233,9 @@ fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<W
     _spawn_grid_node(
         &mut commands,
         &world_assets,
-        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        true,
+        rng.shift(),
+        Color::rgba(0.8, 0.6, 0.8, 0.2),
         HexNode::new(
             Vec2 {
                 x: TILE_SIZE,
@@ -222,7 +249,9 @@ fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<W
     _spawn_grid_node(
         &mut commands,
         &world_assets,
-        Color::rgba(0.8, 0.6, 0.8, 0.4),
+        true,
+        rng.shift(),
+        Color::rgba(0.8, 0.6, 0.8, 0.2),
         HexNode::new(
             Vec2 {
                 x: TILE_SIZE,
@@ -241,6 +270,8 @@ fn spawn_grid_nodes(mut commands: Commands, grid: Res<Grid>, world_assets: Res<W
 fn _spawn_grid_node(
     commands: &mut Commands,
     world_assets: &Res<WorldAssets>,
+    run: bool,
+    seed: i64,
     color: Color,
     source: HexNode,
 ) {
@@ -253,6 +284,10 @@ fn _spawn_grid_node(
     let name = format!("node-{}:{}", 0, 0);
     let node_id = commands.spawn().insert(Name::new(name)).id();
     let list = node.spawn_entities(color, node_id, commands, &world_assets);
+
+    if run {
+        node.spawn_points(seed, commands, world_assets);
+    }
 
     // Finalize hex node and entities as children
     commands
