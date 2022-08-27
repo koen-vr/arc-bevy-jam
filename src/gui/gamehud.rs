@@ -175,7 +175,7 @@ fn enter_base_gameplay(
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Px(65.0)),
                 flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceAround,
+                justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Center,
                 ..default()
             },
@@ -192,7 +192,8 @@ fn enter_base_gameplay(
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
-        "back".into(),
+        65.,
+        "<<".into(),
         app_assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::BaseExit,
@@ -238,7 +239,7 @@ fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Px(65.0)),
                 flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceAround,
+                justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Center,
                 ..default()
             },
@@ -255,7 +256,8 @@ fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
-        "back".into(),
+        65.,
+        "<<".into(),
         app_assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::EventExit,
@@ -312,7 +314,8 @@ fn enter_explore_gameplay(
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
-        "back".into(),
+        65.,
+        "<<".into(),
         app_assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::ExploreExit,

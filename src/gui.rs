@@ -24,6 +24,7 @@ pub(crate) fn create_button<ButtomType: Component>(
     commands: &mut Commands,
     fg: Color,
     bg: Color,
+    width: f32,
     text: String,
     font: Handle<Font>,
     btn_type: ButtomType,
@@ -32,7 +33,7 @@ pub(crate) fn create_button<ButtomType: Component>(
         .spawn_bundle(ButtonBundle {
             focus_policy: FocusPolicy::Block,
             style: Style {
-                size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                size: Size::new(Val::Px(width), Val::Px(65.0)),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
@@ -58,6 +59,7 @@ pub(crate) fn create_image_button<ButtomType: Component>(
     commands: &mut Commands,
     fg: Color,
     bg: Color,
+    width: f32,
     text: String,
     font: Handle<Font>,
     btn_type: ButtomType,
@@ -66,7 +68,7 @@ pub(crate) fn create_image_button<ButtomType: Component>(
         .spawn_bundle(ButtonBundle {
             focus_policy: FocusPolicy::Block,
             style: Style {
-                size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                size: Size::new(Val::Px(width), Val::Px(65.0)),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()

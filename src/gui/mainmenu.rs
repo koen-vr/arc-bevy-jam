@@ -138,7 +138,8 @@ fn enter_mainmenu(
             &mut commands,
             gui::TEXT_BUTTON,
             gui::NORMAL_BUTTON,
-            "Exit".into(),
+            140.,
+            "exit".into(),
             app_assets.gui_font.clone(),
             MainMenuBtnExit,
         ));
@@ -147,6 +148,7 @@ fn enter_mainmenu(
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
+        140.,
         "start".into(),
         app_assets.gui_font.clone(),
         MainMenuBtnEnter,
