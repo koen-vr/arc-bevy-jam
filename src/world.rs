@@ -61,6 +61,6 @@ impl Plugin for WorldPlugin {
         app.add_plugin(PlayerPlugin);
         app.add_plugin(BaseModePlugin);
         // app.add_plugin(EventModePlugin);
-        // app.add_plugin(ExploreModePlugin);
+        app.add_plugin(ExploreModePlugin);
     }
 }

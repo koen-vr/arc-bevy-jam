@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::gui;
-use crate::world::{base_mode_select, WorldAssets};
+use crate::world::*;
 
 const KEY_CLICKED: &str = "ButtonKey::clicked:";
 const FAILED_TO_SET_STATE: &str = "Failed to set game state";
@@ -220,13 +220,23 @@ fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
     let root = commands
         .spawn_bundle(NodeBundle {
             style: Style {
+                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            color: Color::NONE.into(),
+            ..default()
+        })
+        .insert(Name::new("event-menu"))
+        .insert(HudCleanup)
+        .id();
+
+    let menu = commands
+        .spawn_bundle(NodeBundle {
+            style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Px(65.0)),
-                margin: UiRect {
-                    left: Val::Percent(0.0),
-                    right: Val::Percent(0.0),
-                    top: Val::Percent(100.0),
-                    bottom: Val::Percent(0.0),
-                },
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceAround,
                 align_items: AlignItems::Center,
@@ -252,25 +262,43 @@ fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
         },
     ));
 
-    commands.entity(root).push_children(&list);
+    commands.entity(menu).push_children(&list);
+
+    commands.entity(root).push_children(&[menu]);
 }
 
-fn enter_explore_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
+fn enter_explore_gameplay(
+    mut commands: Commands,
+    app_assets: Res<AppAssets>,
+    world_assets: Res<WorldAssets>,
+) {
     log::info!("enter_explore_gameplay");
 
     let root = commands
         .spawn_bundle(NodeBundle {
             style: Style {
-                size: Size::new(Val::Percent(100.0), Val::Px(65.0)),
-                margin: UiRect {
-                    left: Val::Percent(0.0),
-                    right: Val::Percent(0.0),
-                    top: Val::Percent(100.0),
-                    bottom: Val::Percent(0.0),
-                },
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceAround,
+                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
+                ..default()
+            },
+            color: Color::NONE.into(),
+            ..default()
+        })
+        .insert(Name::new("event-menu"))
+        .insert(HudCleanup)
+        .id();
+
+    let body = explore_mode_dialog(&mut commands, &app_assets, &world_assets);
+
+    let menu = commands
+        .spawn_bundle(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Percent(100.0), Val::Px(65.0)),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::FlexEnd,
                 ..default()
             },
             color: Color::NONE.into(),
@@ -280,9 +308,7 @@ fn enter_explore_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
         .insert(HudCleanup)
         .id();
 
-    let mut list = Vec::new();
-
-    list.push(gui::create_button(
+    let exit = gui::create_button(
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
@@ -291,17 +317,10 @@ fn enter_explore_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
         ButtonType {
             key: ButtonKey::ExploreExit,
         },
-    ));
-    list.push(gui::create_button(
-        &mut commands,
-        gui::TEXT_BUTTON,
-        gui::NORMAL_BUTTON,
-        "enter".into(),
-        app_assets.gui_font.clone(),
-        ButtonType {
-            key: ButtonKey::ExploreEnter,
-        },
-    ));
+    );
 
-    commands.entity(root).push_children(&list);
+    let stats = explore_mode_stats(&mut commands, &app_assets.gui_font);
+
+    commands.entity(menu).push_children(&[exit, stats]);
+    commands.entity(root).push_children(&[menu, body]);
 }

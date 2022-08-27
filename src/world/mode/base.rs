@@ -104,6 +104,10 @@ fn handle_btn_update_click(
         .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
 }
 
+////////////////////////
+/// Gamehud functions
+////////////////////////
+
 pub(crate) fn base_mode_select(
     commands: &mut Commands,
     app_assets: &Res<AppAssets>,

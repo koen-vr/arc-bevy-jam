@@ -227,10 +227,12 @@ fn enter_player_explore(
 
     // Resource Setup
     player.insert(HealthRecource {
-        value: ship_info.health,
+        max: ship_info.health * 10,
+        value: ship_info.health * 10,
     });
     player.insert(EnergyRecource {
-        value: ship_info.energy,
+        max: ship_info.energy * 10,
+        value: ship_info.energy * 10,
     });
 
     // Movement Setup
@@ -301,11 +303,16 @@ fn move_explore_grid(
     time: Res<Time>,
     windows: Res<Windows>,
     mut buttons: ResMut<Input<MouseButton>>,
-    mut player_query: Query<(&Player, &mut GridTarget, &mut Transform)>,
+    mut player_query: Query<(
+        &Player,
+        &mut GridTarget,
+        &mut Transform,
+        &mut EnergyRecource,
+    )>,
     mut active_query: Query<(&mut Sprite, &mut Transform), (With<GridTargetHex>, Without<Player>)>,
     camera_query: Query<(&Camera, &GlobalTransform), (With<PlayerCamera>, Without<Player>)>,
 ) {
-    let (player, mut move_to, mut transform) = player_query.single_mut();
+    let (player, mut move_to, mut transform, mut energy) = player_query.single_mut();
     if !player.active {
         return;
     }
@@ -336,18 +343,29 @@ fn move_explore_grid(
     // see move_to.update_current call above
     let hex = &grid.layout.hex_for(move_to.mouse);
     let dist = hex.distance(&grid.layout.hex_for(pos));
+    let cost = (dist * 3) as u16;
 
     let can_jump = dist <= player.jump_range as i32;
 
     // Note: There is no need to rest this
-    if can_jump && !move_to.moving && grid.on_grid(hex) {
+    if can_jump && !move_to.moving && energy.value >= cost && grid.on_grid(hex) {
         active_sprite.color = Color::rgb(1., 1., 1.);
         if buttons.just_pressed(MouseButton::Left) {
             log::info!(">> Star Moving");
             // TODO Start roling event dice ,,,
+
             move_to.moving = true;
             move_to.set_current();
             buttons.clear();
+
+            // Note Cleanup, Subtract cost
+
+            if energy.value > cost {
+                energy.value = energy.value - cost;
+            } else {
+                energy.value = 0;
+                // TODO Stranded
+            }
         }
     } else {
         active_sprite.color = Color::rgb(1., 0., 0.);

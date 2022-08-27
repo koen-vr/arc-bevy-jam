@@ -33,8 +33,6 @@ pub(crate) fn create_button<ButtomType: Component>(
             focus_policy: FocusPolicy::Block,
             style: Style {
                 size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                // center button
-                margin: UiRect::all(Val::Auto),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
@@ -69,8 +67,6 @@ pub(crate) fn create_image_button<ButtomType: Component>(
             focus_policy: FocusPolicy::Block,
             style: Style {
                 size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                // center button
-                margin: UiRect::all(Val::Auto),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
