@@ -15,6 +15,11 @@ struct MainMenuBtnEnter;
 
 pub struct MainMenuPlugin;
 
+#[cfg(not(target_arch = "wasm32"))]
+const ENABLE_EXIT: bool = true;
+#[cfg(target_arch = "wasm32")]
+const ENABLE_EXIT: bool = false;
+
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set(SystemSet::on_update(AppState::MainMenu).with_system(update_buttons));
@@ -128,19 +133,21 @@ fn enter_mainmenu(
 
     let mut list = Vec::new();
 
+    if ENABLE_EXIT {
+        list.push(gui::create_button(
+            &mut commands,
+            gui::TEXT_BUTTON,
+            gui::NORMAL_BUTTON,
+            "Exit".into(),
+            app_assets.gui_font.clone(),
+            MainMenuBtnExit,
+        ));
+    }
     list.push(gui::create_button(
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
-        "Exit".into(),
-        app_assets.gui_font.clone(),
-        MainMenuBtnExit,
-    ));
-    list.push(gui::create_button(
-        &mut commands,
-        gui::TEXT_BUTTON,
-        gui::NORMAL_BUTTON,
-        "Play".into(),
+        "start".into(),
         app_assets.gui_font.clone(),
         MainMenuBtnEnter,
     ));
