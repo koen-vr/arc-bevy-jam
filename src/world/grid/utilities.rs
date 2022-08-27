@@ -4,6 +4,7 @@ use super::*;
 pub struct GridTarget {
     pub mouse: Vec2,
     pub target: Vec2,
+    pub moving: bool,
 }
 
 #[derive(Component)]

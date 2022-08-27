@@ -5,7 +5,6 @@ pub use resources::*;
 
 #[derive(Component, Default, Inspectable)]
 pub struct Player {
-    moved: bool,
     active: bool,
     lookat: Vec3,
     jump_range: u8,
@@ -220,6 +219,7 @@ fn enter_player_explore(
         .insert(CleanupPlayerExplore)
         .insert(Player {
             active: true,
+            jump_range: ship_info.jump,
             move_speed: ship_info.speed,
             rotate_speed: ROTATE_SPEED,
             ..Default::default()
@@ -238,6 +238,7 @@ fn enter_player_explore(
         .insert(GridTarget {
             mouse: Vec2::new(0.0, 0.0),
             target: Vec2::new(0.0, 0.0),
+            moving: false,
         })
         .insert(GridMovement {
             cost: 0_25,
@@ -256,34 +257,35 @@ fn move_event_grid(
     mut player_query: Query<(&mut Player, &mut GridTarget, &mut Transform)>,
 ) {
     let (mut player, mut move_to, mut transform) = player_query.single_mut();
-    player.moved = false;
+
     if !player.active {
         return;
     }
 
     let move_speed = player.move_speed * time.delta_seconds() * TILE_SIZE * 0.5;
 
+    let mut moved = false;
     let mut target_y = 0.0;
     if keyboard.pressed(KeyCode::W) {
         target_y = 1.;
-        player.moved = true;
+        moved = true;
     }
     if keyboard.pressed(KeyCode::S) {
         target_y = -1.;
-        player.moved = true;
+        moved = true;
     }
 
     let mut target_x = 0.0;
     if keyboard.pressed(KeyCode::A) {
         target_x = -1.;
-        player.moved = true;
+        moved = true;
     }
     if keyboard.pressed(KeyCode::D) {
         target_x = 1.;
-        player.moved = true;
+        moved = true;
     }
 
-    if player.moved {
+    if moved {
         transform.translation =
             transform.translation + (Vec3::new(target_x, target_y, 0.0).normalize() * move_speed);
 
@@ -295,11 +297,12 @@ fn move_event_grid(
 }
 
 fn move_explore_grid(
+    grid: Res<Grid>,
     time: Res<Time>,
     windows: Res<Windows>,
     mut buttons: ResMut<Input<MouseButton>>,
     mut player_query: Query<(&Player, &mut GridTarget, &mut Transform)>,
-    mut active_query: Query<&mut Transform, (With<GridTargetHex>, Without<Player>)>,
+    mut active_query: Query<(&mut Sprite, &mut Transform), (With<GridTargetHex>, Without<Player>)>,
     camera_query: Query<(&Camera, &GlobalTransform), (With<PlayerCamera>, Without<Player>)>,
 ) {
     let (player, mut move_to, mut transform) = player_query.single_mut();
@@ -318,24 +321,41 @@ fn move_explore_grid(
     // Update the current target
     move_to.update_current(window, camera, camera_transform);
 
-    if buttons.just_pressed(MouseButton::Left) {
-        log::info!(">> grid node {}", "BaseExit");
-        move_to.set_current();
-        buttons.clear();
-    }
-
-    // Update the path to the targets Not sure if this is the way
-    // It is here because we compute the mouse position in move to
-    let mut active_transform = active_query.single_mut();
-    active_transform.translation.x = move_to.mouse.x;
-    active_transform.translation.y = move_to.mouse.y;
-    // TODO Move Above or replace with method call below
-    // grid_movement.update_current(&active_entity, &move_to, &transform);
-
     let pos = Vec2 {
         x: transform.translation.x,
         y: transform.translation.y,
     };
+
+    // Update the path to the targets Not sure if this is the way
+    // It is here because we compute the mouse position in move to
+    let (mut active_sprite, mut active_transform) = active_query.single_mut();
+    active_transform.translation.x = move_to.mouse.x;
+    active_transform.translation.y = move_to.mouse.y;
+
+    // Note: Duplicated/Revesed math here
+    // see move_to.update_current call above
+    let hex = &grid.layout.hex_for(move_to.mouse);
+    let dist = hex.distance(&grid.layout.hex_for(pos));
+
+    let can_jump = dist <= player.jump_range as i32;
+
+    // Note: There is no need to rest this
+    if can_jump && !move_to.moving && grid.on_grid(hex) {
+        active_sprite.color = Color::rgb(1., 1., 1.);
+        if buttons.just_pressed(MouseButton::Left) {
+            log::info!(">> Star Moving");
+            // TODO Start roling event dice ,,,
+            move_to.moving = true;
+            move_to.set_current();
+            buttons.clear();
+        }
+    } else {
+        active_sprite.color = Color::rgb(1., 0., 0.);
+    }
+
+    // TODO Move Above or replace with method call below
+    // grid_movement.update_current(&active_entity, &move_to, &transform);
+
     if move_to.target.distance(pos) > 0.25 {
         let distance = move_to.target - pos;
 
@@ -349,6 +369,11 @@ fn move_explore_grid(
             transform.translation =
                 Vec3::new(move_to.target.x, move_to.target.y, transform.translation.z);
         }
+    } else if move_to.moving {
+        move_to.moving = false;
+        log::info!(">> End Moving");
+        // TODO Popup an event dialog
+        // TODO Disable move_to.moving
     }
 }
 

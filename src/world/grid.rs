@@ -12,7 +12,7 @@ pub use storage::*;
 pub mod utilities;
 pub use utilities::*;
 
-struct Grid {
+pub struct Grid {
     pub radius: i32,
     pub layout: Layout,
 }
@@ -305,5 +305,11 @@ fn pause_grid_nodes(mut nodes_query: Query<&mut Visibility, With<GridTargetHex>>
 fn resume_grid_nodes(mut nodes_query: Query<&mut Visibility, With<GridTargetHex>>) {
     for mut visibility in nodes_query.iter_mut() {
         visibility.is_visible = true;
+    }
+}
+
+impl Grid {
+    pub fn on_grid(&self, hex: &Axial) -> bool {
+        self.radius >= hex.distance(&Axial { q: 0, r: 0 })
     }
 }
