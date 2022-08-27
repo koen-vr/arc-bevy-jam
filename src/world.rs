@@ -14,7 +14,6 @@ use player::*;
 
 pub const TILE_SIZE: f32 = 64.0;
 
-pub const MOVE_SPEED: f32 = 8.0;
 pub const ROTATE_SPEED: f32 = 24.0;
 
 pub const CAMERA_ZOOM_EVENT: f32 = 0.9;

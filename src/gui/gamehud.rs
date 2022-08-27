@@ -9,7 +9,7 @@ const FAILED_TO_SET_STATE: &str = "Failed to set game state";
 #[derive(Component, Clone, Copy)]
 enum ButtonKey {
     BaseExit,
-    BaseEnter,
+    //BaseEnter,
     EventExit,
     ExploreExit,
     ExploreEnter,
@@ -118,12 +118,12 @@ fn handle_btn_update_click(button_key: ButtonKey, state: &mut ResMut<State<AppSt
                 .set(AppState::MainLoading)
                 .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
         }
-        ButtonKey::BaseEnter => {
-            log::info!("{} {}", KEY_CLICKED, "BaseEnter");
-            state
-                .push(AppState::GamePlay(GameMode::ExploreGrid))
-                .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
-        }
+        // ButtonKey::BaseEnter => {
+        //     log::info!("{} {}", KEY_CLICKED, "BaseEnter");
+        //     state
+        //         .push(AppState::GamePlay(GameMode::ExploreGrid))
+        //         .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
+        // }
         ButtonKey::EventExit => {
             log::info!("{} {}", KEY_CLICKED, "EventExit");
             state
@@ -192,22 +192,22 @@ fn enter_base_gameplay(
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
-        "Back".into(),
+        "back".into(),
         app_assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::BaseExit,
         },
     ));
-    list.push(gui::create_button(
-        &mut commands,
-        gui::TEXT_BUTTON,
-        gui::NORMAL_BUTTON,
-        "Enter".into(),
-        app_assets.gui_font.clone(),
-        ButtonType {
-            key: ButtonKey::BaseEnter,
-        },
-    ));
+    // list.push(gui::create_button(
+    //     &mut commands,
+    //     gui::TEXT_BUTTON,
+    //     gui::NORMAL_BUTTON,
+    //     "Enter".into(),
+    //     app_assets.gui_font.clone(),
+    //     ButtonType {
+    //         key: ButtonKey::BaseEnter,
+    //     },
+    // ));
 
     commands.entity(menu).push_children(&list);
 
@@ -245,7 +245,7 @@ fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
-        "Back".into(),
+        "back".into(),
         app_assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::EventExit,
@@ -286,7 +286,7 @@ fn enter_explore_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
-        "Back".into(),
+        "back".into(),
         app_assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::ExploreExit,
@@ -296,7 +296,7 @@ fn enter_explore_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
-        "Enter".into(),
+        "enter".into(),
         app_assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::ExploreEnter,

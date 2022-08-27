@@ -1,13 +1,14 @@
 use super::*;
 
-pub mod recources;
-pub use recources::*;
+pub mod resources;
+pub use resources::*;
 
 #[derive(Component, Default, Inspectable)]
 pub struct Player {
     moved: bool,
     active: bool,
     lookat: Vec3,
+    jump_range: u8,
     move_speed: f32,
     rotate_speed: f32,
 }
@@ -50,6 +51,7 @@ impl Plugin for PlayerPlugin {
 
         if tool::debug::ENABLE_INSPECTOR {
             app.register_inspectable::<Player>();
+            app.register_inspectable::<HealthRecource>();
             app.register_inspectable::<EnergyRecource>();
         }
 
@@ -191,12 +193,13 @@ fn exit_player_explore(mut commands: Commands, query: Query<Entity, With<Cleanup
 
 fn enter_player_explore(
     mut commands: Commands,
+    ship_info: Res<ShipInfo>,
     player_state: Res<PlayerState>,
     world_assets: Res<WorldAssets>,
 ) {
     log::info!("enter_player_explore");
 
-    let mut sprite = TextureAtlasSprite::new(7);
+    let mut sprite = TextureAtlasSprite::new(ship_info.get_index());
     sprite.color = Color::rgb(0.9, 0.8, 1.0);
     sprite.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
 
@@ -217,13 +220,18 @@ fn enter_player_explore(
         .insert(CleanupPlayerExplore)
         .insert(Player {
             active: true,
-            move_speed: MOVE_SPEED,
+            move_speed: ship_info.speed,
             rotate_speed: ROTATE_SPEED,
             ..Default::default()
         });
 
     // Resource Setup
-    player.insert(EnergyRecource { value: 100_00 });
+    player.insert(HealthRecource {
+        value: ship_info.health,
+    });
+    player.insert(EnergyRecource {
+        value: ship_info.energy,
+    });
 
     // Movement Setup
     player

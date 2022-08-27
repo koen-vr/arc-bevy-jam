@@ -55,8 +55,8 @@ fn main() {
     app.insert_resource(ImageSettings::default_nearest());
     app.insert_resource(ClearColor(GAMECLEAR));
     app.insert_resource(WindowDescriptor {
-        width: 1600.0,
-        height: 900.0,
+        width: 1280.0,
+        height: 720.0,
         resizable: false,
         title: GAMENAME.into(),
         position: window::WindowPosition::Automatic,
