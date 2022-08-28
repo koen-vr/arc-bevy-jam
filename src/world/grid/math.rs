@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use super::*;
 
 #[derive(Clone, Copy)]
@@ -123,6 +125,12 @@ impl Axial {
         }
 
         return result;
+    }
+}
+
+impl Display for Axial {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}:{})", self.q, self.r)
     }
 }
 

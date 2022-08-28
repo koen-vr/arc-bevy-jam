@@ -1,5 +1,8 @@
 use super::*;
 
+pub mod data;
+pub use data::*;
+
 pub mod math;
 pub use math::*;
 
@@ -15,6 +18,7 @@ pub use utilities::*;
 pub struct Grid {
     pub radius: i32,
     pub layout: Layout,
+    pub nodes: HashMap<Axial, HexNode>,
 }
 
 #[derive(Component)]
@@ -38,17 +42,20 @@ impl Plugin for GridPlugin {
             app.register_inspectable::<GridMovement>();
         }
 
-        app.insert_resource(Grid {
-            radius: 38,
-            layout: Layout {
-                size: Vec2 {
-                    x: TILE_SIZE,
-                    y: TILE_SIZE,
-                },
-                style: orient::Style::Pointy,
-                origin: Vec2 { x: 0., y: 0. },
-                matrix: Orientation::new(orient::Style::Pointy),
+        let radius = 38;
+        let layout = Layout {
+            size: Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
             },
+            style: orient::Style::Pointy,
+            origin: Vec2 { x: 0., y: 0. },
+            matrix: Orientation::new(orient::Style::Pointy),
+        };
+        app.insert_resource(Grid {
+            radius: radius,
+            layout: layout,
+            nodes: HashMap::new(),
         });
 
         // FixMe: Execution of systems is not ordered, this is broken.
@@ -122,162 +129,174 @@ fn resume_explore_movement(mut grid_root: Query<&mut Visibility, With<GridRoot>>
 
 fn spawn_grid_nodes(
     mut commands: Commands,
-    grid: Res<Grid>,
+    mut grid: ResMut<Grid>,
     mut rng: ResMut<Shift64>,
     world_assets: Res<WorldAssets>,
 ) {
     // Main Grid nodes
+    let mut root = HexMap::new(
+        grid.layout.size,
+        grid.layout.style,
+        grid.layout.origin,
+        grid.radius,
+    );
     _spawn_grid_node(
+        &mut root,
         &mut commands,
         &world_assets,
         false,
         rng.shift(),
         Color::rgba(0.6, 0.4, 0.6, 0.3),
-        HexNode::new(
-            grid.layout.size,
-            grid.layout.style,
-            grid.layout.origin,
-            grid.radius,
-        ),
     );
+
+    // TODO Grid should have a map of all tiles
+    // all points in nodes should be stored in grid
 
     // Sub grid nodes
     let offset = 24;
-    _spawn_grid_node(
-        &mut commands,
-        &world_assets,
-        true,
-        rng.shift(),
-        Color::rgba(0.8, 0.6, 0.8, 0.2),
-        HexNode::new(
-            Vec2 {
-                x: TILE_SIZE,
-                y: TILE_SIZE,
-            },
-            orient::Style::Pointy,
-            grid.layout.center_for(&Axial { q: -offset, r: 0 }),
-            12,
-        ),
+    let mut node_a = HexMap::new(
+        Vec2 {
+            x: TILE_SIZE,
+            y: TILE_SIZE,
+        },
+        orient::Style::Pointy,
+        grid.layout.center_for(&Axial { q: -offset, r: 0 }),
+        12,
     );
     _spawn_grid_node(
+        &mut node_a,
         &mut commands,
         &world_assets,
         true,
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
-        HexNode::new(
-            Vec2 {
-                x: TILE_SIZE,
-                y: TILE_SIZE,
-            },
-            orient::Style::Pointy,
-            grid.layout.center_for(&Axial { q: 0, r: -offset }),
-            12,
-        ),
-    );
-    _spawn_grid_node(
-        &mut commands,
-        &world_assets,
-        true,
-        rng.shift(),
-        Color::rgba(0.8, 0.6, 0.8, 0.2),
-        HexNode::new(
-            Vec2 {
-                x: TILE_SIZE,
-                y: TILE_SIZE,
-            },
-            orient::Style::Pointy,
-            grid.layout.center_for(&Axial {
-                q: -offset,
-                r: offset,
-            }),
-            12,
-        ),
     );
 
+    let mut node_b = HexMap::new(
+        Vec2 {
+            x: TILE_SIZE,
+            y: TILE_SIZE,
+        },
+        orient::Style::Pointy,
+        grid.layout.center_for(&Axial { q: 0, r: -offset }),
+        12,
+    );
     _spawn_grid_node(
+        &mut node_b,
         &mut commands,
         &world_assets,
         true,
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
-        HexNode::new(
-            Vec2 {
-                x: TILE_SIZE,
-                y: TILE_SIZE,
-            },
-            orient::Style::Pointy,
-            Vec2 { x: 0., y: 0. },
-            12,
-        ),
     );
 
+    let mut node_c = HexMap::new(
+        Vec2 {
+            x: TILE_SIZE,
+            y: TILE_SIZE,
+        },
+        orient::Style::Pointy,
+        grid.layout.center_for(&Axial {
+            q: -offset,
+            r: offset,
+        }),
+        12,
+    );
     _spawn_grid_node(
+        &mut node_c,
         &mut commands,
         &world_assets,
         true,
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
-        HexNode::new(
-            Vec2 {
-                x: TILE_SIZE,
-                y: TILE_SIZE,
-            },
-            orient::Style::Pointy,
-            grid.layout.center_for(&Axial { q: offset, r: 0 }),
-            12,
-        ),
+    );
+
+    let mut node_d = HexMap::new(
+        Vec2 {
+            x: TILE_SIZE,
+            y: TILE_SIZE,
+        },
+        orient::Style::Pointy,
+        Vec2 { x: 0., y: 0. },
+        12,
     );
     _spawn_grid_node(
+        &mut node_d,
         &mut commands,
         &world_assets,
         true,
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
-        HexNode::new(
-            Vec2 {
-                x: TILE_SIZE,
-                y: TILE_SIZE,
-            },
-            orient::Style::Pointy,
-            grid.layout.center_for(&Axial { q: 0, r: offset }),
-            12,
-        ),
+    );
+
+    let mut node_e = HexMap::new(
+        Vec2 {
+            x: TILE_SIZE,
+            y: TILE_SIZE,
+        },
+        orient::Style::Pointy,
+        grid.layout.center_for(&Axial { q: offset, r: 0 }),
+        12,
     );
     _spawn_grid_node(
+        &mut node_e,
         &mut commands,
         &world_assets,
         true,
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
-        HexNode::new(
-            Vec2 {
-                x: TILE_SIZE,
-                y: TILE_SIZE,
-            },
-            orient::Style::Pointy,
-            grid.layout.center_for(&Axial {
-                q: offset,
-                r: -offset,
-            }),
-            12,
-        ),
     );
+
+    let mut node_f = HexMap::new(
+        Vec2 {
+            x: TILE_SIZE,
+            y: TILE_SIZE,
+        },
+        orient::Style::Pointy,
+        grid.layout.center_for(&Axial { q: 0, r: offset }),
+        12,
+    );
+    _spawn_grid_node(
+        &mut node_f,
+        &mut commands,
+        &world_assets,
+        true,
+        rng.shift(),
+        Color::rgba(0.8, 0.6, 0.8, 0.2),
+    );
+
+    let mut node_g = HexMap::new(
+        Vec2 {
+            x: TILE_SIZE,
+            y: TILE_SIZE,
+        },
+        orient::Style::Pointy,
+        grid.layout.center_for(&Axial {
+            q: offset,
+            r: -offset,
+        }),
+        12,
+    );
+    _spawn_grid_node(
+        &mut node_g,
+        &mut commands,
+        &world_assets,
+        true,
+        rng.shift(),
+        Color::rgba(0.8, 0.6, 0.8, 0.2),
+    );
+
+    grid.nodes = root.nodes;
 }
 
 fn _spawn_grid_node(
+    node: &mut HexMap,
     commands: &mut Commands,
     world_assets: &Res<WorldAssets>,
     run: bool,
     seed: i64,
     color: Color,
-    source: HexNode,
 ) {
-    // Initialize a hex storage component for data
-    // let mut node_storage = HexStorage::default();
-
-    let mut node = source.clone();
-
     // Setup the node entity and spawn the grid
     let name = format!("node-{}:{}", 0, 0);
     let node_id = commands.spawn().insert(Name::new(name)).id();
@@ -294,7 +313,7 @@ fn _spawn_grid_node(
         .insert_bundle(TransformBundle::default())
         .insert(CleanupGrid)
         .insert(GridRoot)
-        .insert(node)
+        // .insert(node)
         .push_children(&list);
 }
 
@@ -313,5 +332,40 @@ fn resume_grid_nodes(mut nodes_query: Query<&mut Visibility, With<GridTargetHex>
 impl Grid {
     pub fn on_grid(&self, hex: &Axial) -> bool {
         self.radius >= hex.distance(&Axial { q: 0, r: 0 })
+    }
+
+    pub fn get_hex(&mut self, position: Vec2) -> Axial {
+        self.layout.hex_for(position)
+    }
+
+    pub fn get_value(&mut self, hex: Axial) -> i32 {
+        if let Some(node) = self.nodes.get(&hex) {
+            return node.value;
+        }
+        0
+    }
+
+    pub fn get(&mut self, hex: Axial) -> Option<Entity> {
+        if let Some(node) = self.nodes.get(&hex) {
+            return Some(node.entity);
+        }
+        None
+    }
+
+    pub fn get_event_key(&mut self, hex: Axial) -> EventKey {
+        if let Some(node) = self.nodes.get(&hex) {
+            return node.key;
+        }
+        EventKey::Combat
+    }
+
+    pub fn roll_event_table(&mut self, seed: i64, position: Vec2) -> EventKey {
+        let hex = self.layout.hex_for(position);
+        if let Some(node) = self.nodes.get(&hex) {
+            // TODO Roll the actual table in to an event
+            return node.key;
+        }
+        // TODO Roll combat table in to an event
+        EventKey::Combat
     }
 }

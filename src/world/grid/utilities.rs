@@ -29,7 +29,7 @@ impl GridTarget {
         transform: &GlobalTransform,
     ) {
         if let Some(screen_pos) = window.cursor_position() {
-            let node = HexNode::new(
+            let node = HexMap::new(
                 Vec2 {
                     x: TILE_SIZE,
                     y: TILE_SIZE,

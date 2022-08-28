@@ -47,19 +47,19 @@ pub struct HexBundle {
     pub node: HexNodeId,
 }
 
-#[derive(Component, Clone, Debug, Default)]
-pub struct HexNode {
+pub struct HexMap {
     pub radius: i32,
     pub layout: Layout,
-    pub hexgrid: HashMap<Axial, Option<Entity>>,
+    pub nodes: HashMap<Axial, HexNode>,
 }
 
-#[derive(Component, Clone, Debug, Default)]
-pub struct HexStorage {
-    pub nodes: Vec<HexNode>,
+pub struct HexNode {
+    pub key: EventKey,
+    pub value: i32,
+    pub entity: Entity,
 }
 
-impl HexNode {
+impl HexMap {
     pub fn new(size: Vec2, style: orient::Style, origin: Vec2, radius: i32) -> Self {
         Self {
             radius: radius,
@@ -69,7 +69,7 @@ impl HexNode {
                 origin,
                 matrix: Orientation::new(style),
             },
-            hexgrid: HashMap::new(),
+            nodes: HashMap::new(),
         }
     }
 
@@ -82,7 +82,6 @@ impl HexNode {
     ) -> Vec<Entity> {
         // Collections setup
         let mut list = Vec::new();
-        let mut grid = HashMap::new();
 
         // Spawn hex grid entities
         for q in -self.radius..(self.radius + 1) {
@@ -115,13 +114,18 @@ impl HexNode {
                     .insert(Name::new(name))
                     .id();
 
-                grid.insert(hex, Some(entity));
+                self.nodes.insert(
+                    hex,
+                    HexNode {
+                        key: EventKey::Combat,
+                        value: 0,
+                        entity: entity,
+                    },
+                );
                 list.push(entity);
             }
         }
 
-        // Save the hex grid for updates
-        self.hexgrid = grid;
         list
     }
 
@@ -222,34 +226,52 @@ impl HexNode {
         let mut points = Vec::new();
 
         // Spawn Points of Intrest
-        let mut sprite = TextureAtlasSprite::new(34);
-        sprite.color = Color::rgb(0.9, 0.8, 1.0);
-        sprite.custom_size = Some(Vec2::splat(TILE_SIZE * 0.25));
+        let mut energy = TextureAtlasSprite::new(29);
+        energy.color = Color::rgb(0.9, 0.8, 1.0);
+        energy.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
+
+        let mut mining = TextureAtlasSprite::new(32);
+        mining.color = Color::rgb(0.9, 0.8, 1.0);
+        mining.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
 
         for pnt in list {
-            // let hex = layout.hex_for(Vec2 {
-            //     x: ((pnt.x as f32) - offset_x) + layout.origin.x,
-            //     y: ((pnt.y as f32) - offset_y) + layout.origin.y,
-            // });
-            // let pos = layout.center_for(&hex);
-
-            let pos = Vec2 {
+            let key = rng.i32(256);
+            let value = rng.i32(256);
+            // let pos = Vec2 {
+            //     x: ((pnt.x as f32) - offset_x) + self.layout.origin.x,
+            //     y: ((pnt.y as f32) - offset_y) + self.layout.origin.y,
+            // };
+            let hex = &self.layout.hex_for(Vec2 {
                 x: ((pnt.x as f32) - offset_x) + self.layout.origin.x,
                 y: ((pnt.y as f32) - offset_y) + self.layout.origin.y,
-            };
-            points.push(
-                commands
-                    .spawn_bundle(SpriteSheetBundle {
-                        sprite: sprite.clone(),
-                        texture_atlas: world_assets.base_space_sheet.clone(),
-                        transform: Transform {
-                            translation: Vec3::new(pos.x, pos.y, 9.0),
+            });
+            let pos = self.layout.center_for(hex);
+            if let Some(node) = self.nodes.get_mut(hex) {
+                node.key = match key > 128 {
+                    true => EventKey::Energy,
+                    false => EventKey::Mining,
+                };
+                node.value = value;
+
+                points.push(
+                    commands
+                        .spawn_bundle(SpriteSheetBundle {
+                            sprite: match key > 128 {
+                                true => energy.clone(),
+                                false => mining.clone(),
+                            },
+                            texture_atlas: world_assets.base_space_sheet.clone(),
+                            transform: Transform {
+                                translation: Vec3::new(pos.x, pos.y, 9.0),
+                                ..Default::default()
+                            },
                             ..Default::default()
-                        },
-                        ..Default::default()
-                    })
-                    .id(),
-            );
+                        })
+                        .id(),
+                );
+            } else {
+                log::error!("Invalid hex: {}", hex)
+            }
         }
 
         // Finalize hex node and entities as children

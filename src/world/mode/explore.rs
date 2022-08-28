@@ -113,7 +113,10 @@ fn on_start_hex_event(
             y: transform.translation.y,
         };
         let entity = explore_btn_query.single();
-        grid.roll_event_table(ev.seed, player_state.position);
+
+        // TODO Handle event the roller ...
+        // grid.roll_event_table(ev.seed, player_state.position);
+
         handle_enter_hex_event(entity, &mut commands, &assets);
     }
 }
