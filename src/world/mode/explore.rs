@@ -8,11 +8,24 @@ pub struct HealthText;
 #[derive(Component)]
 pub struct EnergyText;
 
+#[derive(Clone, Copy, Default, Debug)]
+pub struct EndHexEvent {
+    pub enter: bool,
+}
+
+#[derive(Clone, Copy, Default, Debug)]
+pub struct StartHexEvent {
+    pub seed: i64,
+}
+
 pub struct ExploreModePlugin;
 
 impl Plugin for ExploreModePlugin {
     fn build(&self, app: &mut App) {
         let explore_grid = AppState::GamePlay(GameMode::ExploreGrid);
+
+        app.add_event::<EndHexEvent>();
+        app.add_event::<StartHexEvent>();
 
         // app.add_system_set(SystemSet::on_exit(explore_grid).with_system(exit_explore_gameplay));
         // app.add_system_set(SystemSet::on_enter(explore_grid).with_system(enter_explore_gameplay));

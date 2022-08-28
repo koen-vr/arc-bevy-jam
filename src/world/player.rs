@@ -1,3 +1,5 @@
+use crate::gui::gamehud::*;
+
 use super::*;
 
 pub mod resources;
@@ -38,12 +40,16 @@ struct CleanupPlayerExplore;
 
 pub struct PlayerPlugin;
 
+// TODO System if energy = 0 -> Game Over: Stranded
+// TODO System if health = 0 -> Game Over: Destroyed
+
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         let base_mode = AppState::GamePlay(GameMode::BaseGrid);
         let event_mode = AppState::GamePlay(GameMode::EventGrid);
         let explore_mode = AppState::GamePlay(GameMode::ExploreGrid);
 
+        // FixMe: load from saved state
         app.insert_resource(PlayerState {
             ..Default::default()
         });
@@ -54,14 +60,18 @@ impl Plugin for PlayerPlugin {
             app.register_inspectable::<EnergyRecource>();
         }
 
-        // Player Setup Systems
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_player_game));
         app.add_system_set(SystemSet::on_enter(base_mode).with_system(enter_player_game));
 
-        // TODO Reset the move_to target when entering a hex, allow users to enter early
+        app.add_system_set(SystemSet::on_exit(event_mode).with_system(exit_player_event));
         app.add_system_set(SystemSet::on_exit(event_mode).with_system(exit_event_camera));
         app.add_system_set(SystemSet::on_enter(event_mode).with_system(enter_event_camera));
+
+        // -- FixMe: mess to exit state without poping in to base_mode --------------------
+        app.add_system_set(SystemSet::on_exit(explore_mode).with_system(exit_state));
+        app.add_system_set(SystemSet::on_exit(explore_mode).with_system(exit_player_game));
+        // --------------------------------------------------------------------------------
 
         app.add_system_set(SystemSet::on_exit(explore_mode).with_system(exit_player_explore));
         app.add_system_set(SystemSet::on_enter(explore_mode).with_system(enter_player_explore));
@@ -109,6 +119,16 @@ impl Plugin for PlayerPlugin {
         app.add_system_set(
             SystemSet::on_update(explore_mode).with_system(update_scale_camera.after("gui-update")),
         );
+
+        // Event Systems
+        app.add_system_set(
+            SystemSet::on_update(explore_mode)
+                .with_system(on_end_hex_event.after("gui-update").after("player-move")),
+        );
+        app.add_system_set(
+            SystemSet::on_update(explore_mode)
+                .with_system(on_start_hex_event.after("gui-update").after("player-move")),
+        );
     }
 }
 
@@ -117,6 +137,72 @@ fn exit_state(mut commands: Commands, query: Query<Entity, With<CleanupPlayer>>)
     for e in query.iter() {
         commands.entity(e).despawn_recursive();
     }
+}
+
+////////////////////////////////
+/// Handle Exploration Events
+////////////////////////////////
+
+fn on_end_hex_event(
+    mut end_hex_event: EventReader<EndHexEvent>,
+    mut player_query: Query<&mut Player>,
+) {
+    for ev in end_hex_event.iter() {
+        eprintln!("end_hex_event: {:?}!", ev.enter);
+        let mut player = player_query.single_mut();
+        player.active = true;
+    }
+}
+
+fn on_start_hex_event(
+    mut commands: Commands,
+    app_assets: Res<AppAssets>,
+    mut player_state: ResMut<PlayerState>,
+    mut player_query: Query<(&mut Player, &Transform)>,
+    mut start_hex_event: EventReader<StartHexEvent>,
+    explore_btn_query: Query<Entity, With<HudNavigate>>,
+) {
+    for ev in start_hex_event.iter() {
+        let (mut player, transform) = player_query.single_mut();
+        player.active = false;
+        player_state.position = Vec2 {
+            x: transform.translation.x,
+            y: transform.translation.y,
+        };
+        eprintln!("start_hex_event: {:?}!", ev.seed);
+        let entity = explore_btn_query.single();
+        handle_enter_hex_event(entity, &mut commands, &app_assets);
+    }
+}
+
+fn handle_enter_hex_event(entity: Entity, commands: &mut Commands, app_assets: &Res<AppAssets>) {
+    // TODO Adjust based on Seed
+    // TODO Spawn event text
+    let enter = gui::create_button(
+        commands,
+        gui::TEXT_BUTTON,
+        gui::NORMAL_BUTTON,
+        130.,
+        true,
+        "enter".into(),
+        app_assets.gui_font.clone(),
+        ButtonType {
+            key: ButtonKey::EnterEvent,
+        },
+    );
+    let leave = gui::create_button(
+        commands,
+        gui::TEXT_BUTTON,
+        gui::NORMAL_BUTTON,
+        130.,
+        true,
+        "leave".into(),
+        app_assets.gui_font.clone(),
+        ButtonType {
+            key: ButtonKey::LeaveEvent,
+        },
+    );
+    commands.entity(entity).push_children(&[enter, leave]);
 }
 
 ////////////////////////////////
@@ -183,8 +269,25 @@ fn update_scale_camera(
 /// Player Setup - Base Objects
 ////////////////////////////////
 
-fn exit_player_explore(mut commands: Commands, query: Query<Entity, With<CleanupPlayerExplore>>) {
+fn exit_player_event(
+    player_state: Res<PlayerState>,
+    mut player_query: Query<(&mut Transform, &mut GridTarget), With<Player>>,
+) {
+    let (mut transform, mut move_to) = player_query.single_mut();
+    move_to.moving = false;
+    move_to.target.x = player_state.position.x;
+    move_to.target.y = player_state.position.y;
+    transform.translation.x = player_state.position.x;
+    transform.translation.y = player_state.position.y;
+}
+
+fn exit_player_explore(
+    mut commands: Commands,
+    mut player_state: ResMut<PlayerState>,
+    query: Query<Entity, With<CleanupPlayerExplore>>,
+) {
     log::info!("exit_player_explore");
+    player_state.position = Vec2::default();
     for e in query.iter() {
         commands.entity(e).despawn_recursive();
     }
@@ -202,6 +305,7 @@ fn enter_player_explore(
     sprite.color = Color::rgb(0.9, 0.8, 1.0);
     sprite.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
 
+    // Note: restore position from saved state
     let position = player_state.position;
 
     // Spawn the players root entity
@@ -256,9 +360,9 @@ fn enter_player_explore(
 fn move_event_grid(
     time: Res<Time>,
     keyboard: Res<Input<KeyCode>>,
-    mut player_query: Query<(&mut Player, &mut GridTarget, &mut Transform)>,
+    mut player_query: Query<(&Player, &mut GridTarget, &mut Transform)>,
 ) {
-    let (mut player, mut move_to, mut transform) = player_query.single_mut();
+    let (player, mut move_to, mut transform) = player_query.single_mut();
 
     if !player.active {
         return;
@@ -302,7 +406,10 @@ fn move_explore_grid(
     grid: Res<Grid>,
     time: Res<Time>,
     windows: Res<Windows>,
+    mut shift: ResMut<Shift64>,
+    // mut event: ResMut<EventState>,
     mut buttons: ResMut<Input<MouseButton>>,
+    mut hex_event: EventWriter<StartHexEvent>,
     mut player_query: Query<(
         &Player,
         &mut GridTarget,
@@ -351,8 +458,8 @@ fn move_explore_grid(
     if can_jump && !move_to.moving && energy.value >= cost && grid.on_grid(hex) {
         active_sprite.color = Color::rgb(1., 1., 1.);
         if buttons.just_pressed(MouseButton::Left) {
-            log::info!(">> Star Moving");
-            // TODO Start roling event dice ,,,
+            // FixMe: Start roling event dice,
+            // cuting corners no dice animations.
 
             move_to.moving = true;
             move_to.set_current();
@@ -364,7 +471,6 @@ fn move_explore_grid(
                 energy.value = energy.value - cost;
             } else {
                 energy.value = 0;
-                // TODO Stranded
             }
         }
     } else {
@@ -389,9 +495,9 @@ fn move_explore_grid(
         }
     } else if move_to.moving {
         move_to.moving = false;
-        log::info!(">> End Moving");
-        // TODO Popup an event dialog
-        // TODO Disable move_to.moving
+        hex_event.send(StartHexEvent {
+            seed: shift.shift(),
+        });
     }
 }
 

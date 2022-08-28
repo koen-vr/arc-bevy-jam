@@ -25,6 +25,7 @@ pub(crate) fn create_button<ButtomType: Component>(
     fg: Color,
     bg: Color,
     width: f32,
+    visible: bool,
     text: String,
     font: Handle<Font>,
     btn_type: ButtomType,
@@ -32,6 +33,9 @@ pub(crate) fn create_button<ButtomType: Component>(
     commands
         .spawn_bundle(ButtonBundle {
             focus_policy: FocusPolicy::Block,
+            visibility: Visibility {
+                is_visible: visible,
+            },
             style: Style {
                 size: Size::new(Val::Px(width), Val::Px(65.0)),
                 align_items: AlignItems::Center,

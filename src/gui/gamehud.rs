@@ -6,19 +6,33 @@ use crate::world::*;
 const KEY_CLICKED: &str = "ButtonKey::clicked:";
 const FAILED_TO_SET_STATE: &str = "Failed to set game state";
 
-#[derive(Component, Clone, Copy)]
-enum ButtonKey {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ButtonKey {
     BaseExit,
-    //BaseEnter,
     EventExit,
     ExploreExit,
-    ExploreEnter,
+    EnterEvent,
+    LeaveEvent,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum DialogKey {
+    DialogTitle,
+    DialogDescribe,
 }
 
 #[derive(Component)]
-struct ButtonType {
-    key: ButtonKey,
+pub struct ButtonType {
+    pub key: ButtonKey,
 }
+
+#[derive(Component)]
+pub struct DialogType {
+    pub key: DialogKey,
+}
+
+#[derive(Component)]
+pub struct HudNavigate;
 
 #[derive(Component)]
 struct HudCleanup;
@@ -83,8 +97,11 @@ fn exit_state(mut commands: Commands, query: Query<Entity, With<HudCleanup>>) {
 }
 
 fn button_update(
+    mut commands: Commands,
     mut state: ResMut<State<AppState>>,
     mut buttons: ResMut<Input<MouseButton>>,
+    mut hex_event: EventWriter<EndHexEvent>,
+    navi_query: Query<&Children, With<HudNavigate>>,
     mut button_query: Query<
         (&Interaction, &ButtonType, &mut UiColor, &mut Transform),
         (Changed<Interaction>, With<Button>),
@@ -96,7 +113,17 @@ fn button_update(
                 buttons.clear();
                 transform.scale *= 1.05;
                 *color = gui::PRESSED_BUTTON.into();
-                handle_btn_update_click(button_type.key, &mut state);
+                let navi = match navi_query.get_single() {
+                    Ok(navi) => Some(navi),
+                    Err(_) => None,
+                };
+                handle_btn_update_click(
+                    &mut commands,
+                    button_type.key,
+                    navi,
+                    &mut state,
+                    &mut hex_event,
+                );
             }
             Interaction::Hovered => {
                 transform.scale *= 0.95;
@@ -110,7 +137,13 @@ fn button_update(
     }
 }
 
-fn handle_btn_update_click(button_key: ButtonKey, state: &mut ResMut<State<AppState>>) {
+fn handle_btn_update_click(
+    commands: &mut Commands,
+    button_key: ButtonKey,
+    navi_children: Option<&Children>,
+    state: &mut ResMut<State<AppState>>,
+    hex_event: &mut EventWriter<EndHexEvent>,
+) {
     match button_key {
         ButtonKey::BaseExit => {
             log::info!("{} {}", KEY_CLICKED, "BaseExit");
@@ -118,12 +151,6 @@ fn handle_btn_update_click(button_key: ButtonKey, state: &mut ResMut<State<AppSt
                 .set(AppState::MainLoading)
                 .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
         }
-        // ButtonKey::BaseEnter => {
-        //     log::info!("{} {}", KEY_CLICKED, "BaseEnter");
-        //     state
-        //         .push(AppState::GamePlay(GameMode::ExploreGrid))
-        //         .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
-        // }
         ButtonKey::EventExit => {
             log::info!("{} {}", KEY_CLICKED, "EventExit");
             state
@@ -132,15 +159,33 @@ fn handle_btn_update_click(button_key: ButtonKey, state: &mut ResMut<State<AppSt
         }
         ButtonKey::ExploreExit => {
             log::info!("{} {}", KEY_CLICKED, "ExploreExit");
+            // state
+            //     .pop()
+            //     .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
             state
-                .pop()
+                .set(AppState::MainLoading)
                 .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
         }
-        ButtonKey::ExploreEnter => {
-            log::info!("{} {}", KEY_CLICKED, "ExploreEnter");
+        ButtonKey::EnterEvent => {
+            log::info!("{} {}", KEY_CLICKED, "EnterEvent");
+            // TODO: Hook Up Leave event
+            // player.active = true;
             state
                 .push(AppState::GamePlay(GameMode::EventGrid))
                 .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
+            hex_event.send(EndHexEvent { enter: true });
+        }
+        ButtonKey::LeaveEvent => {
+            log::info!("{} {}", KEY_CLICKED, "LeaveEvent");
+            // TODO despawn dialog
+            // TODO: Hook Up Leave event
+            // player.active = true;
+            if let Some(children) = navi_children {
+                for entity in children {
+                    commands.entity(entity.clone()).despawn_recursive();
+                }
+            }
+            hex_event.send(EndHexEvent { enter: false });
         }
     }
 }
@@ -193,22 +238,13 @@ fn enter_base_gameplay(
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
         65.,
+        true,
         "<<".into(),
         app_assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::BaseExit,
         },
     ));
-    // list.push(gui::create_button(
-    //     &mut commands,
-    //     gui::TEXT_BUTTON,
-    //     gui::NORMAL_BUTTON,
-    //     "Enter".into(),
-    //     app_assets.gui_font.clone(),
-    //     ButtonType {
-    //         key: ButtonKey::BaseEnter,
-    //     },
-    // ));
 
     commands.entity(menu).push_children(&list);
 
@@ -257,6 +293,7 @@ fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
         65.,
+        true,
         "<<".into(),
         app_assets.gui_font.clone(),
         ButtonType {
@@ -300,7 +337,7 @@ fn enter_explore_gameplay(
                 size: Size::new(Val::Percent(100.0), Val::Px(65.0)),
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::FlexEnd,
+                align_items: AlignItems::Center,
                 ..default()
             },
             color: Color::NONE.into(),
@@ -310,11 +347,29 @@ fn enter_explore_gameplay(
         .insert(HudCleanup)
         .id();
 
+    let navi = commands
+        .spawn_bundle(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Percent(100.0), Val::Px(65.0)),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::FlexStart,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            color: Color::NONE.into(),
+            ..default()
+        })
+        .insert(Name::new("hex-menu"))
+        .insert(HudCleanup)
+        .insert(HudNavigate)
+        .id();
+
     let exit = gui::create_button(
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
         65.,
+        true,
         "<<".into(),
         app_assets.gui_font.clone(),
         ButtonType {
@@ -324,6 +379,7 @@ fn enter_explore_gameplay(
 
     let stats = explore_mode_stats(&mut commands, &app_assets.gui_font);
 
-    commands.entity(menu).push_children(&[exit, stats]);
+    commands.entity(navi).push_children(&[]);
+    commands.entity(menu).push_children(&[exit, navi, stats]);
     commands.entity(root).push_children(&[menu, body]);
 }
