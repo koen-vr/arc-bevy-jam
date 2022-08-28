@@ -7,7 +7,7 @@ pub use resources::*;
 
 #[derive(Component, Default, Inspectable)]
 pub struct Player {
-    active: bool,
+    pub active: bool,
     lookat: Vec3,
     jump_range: u8,
     move_speed: f32,
@@ -15,8 +15,8 @@ pub struct Player {
 }
 
 #[derive(Clone, Copy, Default, Debug)]
-struct PlayerState {
-    position: Vec2,
+pub struct PlayerState {
+    pub position: Vec2,
 }
 
 #[derive(Component, Default)]
@@ -119,16 +119,6 @@ impl Plugin for PlayerPlugin {
         app.add_system_set(
             SystemSet::on_update(explore_mode).with_system(update_scale_camera.after("gui-update")),
         );
-
-        // Event Systems
-        app.add_system_set(
-            SystemSet::on_update(explore_mode)
-                .with_system(on_end_hex_event.after("gui-update").after("player-move")),
-        );
-        app.add_system_set(
-            SystemSet::on_update(explore_mode)
-                .with_system(on_start_hex_event.after("gui-update").after("player-move")),
-        );
     }
 }
 
@@ -137,72 +127,6 @@ fn exit_state(mut commands: Commands, query: Query<Entity, With<CleanupPlayer>>)
     for e in query.iter() {
         commands.entity(e).despawn_recursive();
     }
-}
-
-////////////////////////////////
-/// Handle Exploration Events
-////////////////////////////////
-
-fn on_end_hex_event(
-    mut end_hex_event: EventReader<EndHexEvent>,
-    mut player_query: Query<&mut Player>,
-) {
-    for ev in end_hex_event.iter() {
-        eprintln!("end_hex_event: {:?}!", ev.enter);
-        let mut player = player_query.single_mut();
-        player.active = true;
-    }
-}
-
-fn on_start_hex_event(
-    mut commands: Commands,
-    app_assets: Res<AppAssets>,
-    mut player_state: ResMut<PlayerState>,
-    mut player_query: Query<(&mut Player, &Transform)>,
-    mut start_hex_event: EventReader<StartHexEvent>,
-    explore_btn_query: Query<Entity, With<HudNavigate>>,
-) {
-    for ev in start_hex_event.iter() {
-        let (mut player, transform) = player_query.single_mut();
-        player.active = false;
-        player_state.position = Vec2 {
-            x: transform.translation.x,
-            y: transform.translation.y,
-        };
-        eprintln!("start_hex_event: {:?}!", ev.seed);
-        let entity = explore_btn_query.single();
-        handle_enter_hex_event(entity, &mut commands, &app_assets);
-    }
-}
-
-fn handle_enter_hex_event(entity: Entity, commands: &mut Commands, app_assets: &Res<AppAssets>) {
-    // TODO Adjust based on Seed
-    // TODO Spawn event text
-    let enter = gui::create_button(
-        commands,
-        gui::TEXT_BUTTON,
-        gui::NORMAL_BUTTON,
-        130.,
-        true,
-        "enter".into(),
-        app_assets.gui_font.clone(),
-        ButtonType {
-            key: ButtonKey::EnterEvent,
-        },
-    );
-    let leave = gui::create_button(
-        commands,
-        gui::TEXT_BUTTON,
-        gui::NORMAL_BUTTON,
-        130.,
-        true,
-        "leave".into(),
-        app_assets.gui_font.clone(),
-        ButtonType {
-            key: ButtonKey::LeaveEvent,
-        },
-    );
-    commands.entity(entity).push_children(&[enter, leave]);
 }
 
 ////////////////////////////////

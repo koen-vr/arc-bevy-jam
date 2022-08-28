@@ -251,7 +251,11 @@ fn enter_base_gameplay(
     commands.entity(root).push_children(&[menu, body]);
 }
 
-fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
+fn enter_event_gameplay(
+    mut commands: Commands,
+    app_assets: Res<AppAssets>,
+    world_assets: Res<WorldAssets>,
+) {
     log::info!("enter_event_gameplay");
 
     let root = commands
@@ -269,6 +273,8 @@ fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
         .insert(Name::new("event-menu"))
         .insert(HudCleanup)
         .id();
+
+    let body = event_mode_dialog(&mut commands, &app_assets, &world_assets);
 
     let menu = commands
         .spawn_bundle(NodeBundle {
@@ -303,7 +309,7 @@ fn enter_event_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
 
     commands.entity(menu).push_children(&list);
 
-    commands.entity(root).push_children(&[menu]);
+    commands.entity(root).push_children(&[menu, body]);
 }
 
 fn enter_explore_gameplay(

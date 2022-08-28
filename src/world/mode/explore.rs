@@ -1,6 +1,6 @@
-use sha2::digest::typenum::Len;
-
 use super::*;
+
+use crate::gui::gamehud::*;
 
 #[derive(Component)]
 pub struct HealthText;
@@ -22,7 +22,7 @@ pub struct ExploreModePlugin;
 
 impl Plugin for ExploreModePlugin {
     fn build(&self, app: &mut App) {
-        let explore_grid = AppState::GamePlay(GameMode::ExploreGrid);
+        let explore_mode = AppState::GamePlay(GameMode::ExploreGrid);
 
         app.add_event::<EndHexEvent>();
         app.add_event::<StartHexEvent>();
@@ -30,8 +30,18 @@ impl Plugin for ExploreModePlugin {
         // app.add_system_set(SystemSet::on_exit(explore_grid).with_system(exit_explore_gameplay));
         // app.add_system_set(SystemSet::on_enter(explore_grid).with_system(enter_explore_gameplay));
 
-        app.add_system_set(SystemSet::on_update(explore_grid).with_system(update_health_text));
-        app.add_system_set(SystemSet::on_update(explore_grid).with_system(update_energy_text));
+        app.add_system_set(SystemSet::on_update(explore_mode).with_system(update_health_text));
+        app.add_system_set(SystemSet::on_update(explore_mode).with_system(update_energy_text));
+
+        // Event Systems
+        app.add_system_set(
+            SystemSet::on_update(explore_mode)
+                .with_system(on_end_hex_event.after("gui-update").after("player-move")),
+        );
+        app.add_system_set(
+            SystemSet::on_update(explore_mode)
+                .with_system(on_start_hex_event.after("gui-update").after("player-move")),
+        );
     }
 }
 
@@ -72,8 +82,74 @@ fn update_energy_text(
     text.sections[0].value = format!("{value}/{max}");
 }
 
+////////////////////////////////
+/// Handle Exploration Events
+////////////////////////////////
+
+fn on_end_hex_event(
+    mut end_hex_event: EventReader<EndHexEvent>,
+    mut player_query: Query<&mut Player>,
+) {
+    for ev in end_hex_event.iter() {
+        let mut player = player_query.single_mut();
+        player.active = true;
+    }
+}
+
+fn on_start_hex_event(
+    mut commands: Commands,
+    assets: Res<AppAssets>,
+    mut grid: ResMut<Grid>,
+    mut player_state: ResMut<PlayerState>,
+    mut start_hex_event: EventReader<StartHexEvent>,
+    mut player_query: Query<(&mut Player, &Transform)>,
+    explore_btn_query: Query<Entity, With<HudNavigate>>,
+) {
+    for ev in start_hex_event.iter() {
+        let (mut player, transform) = player_query.single_mut();
+        player.active = false;
+        player_state.position = Vec2 {
+            x: transform.translation.x,
+            y: transform.translation.y,
+        };
+        let entity = explore_btn_query.single();
+        grid.roll_event_table(ev.seed, player_state.position);
+        handle_enter_hex_event(entity, &mut commands, &assets);
+    }
+}
+
+fn handle_enter_hex_event(entity: Entity, commands: &mut Commands, assets: &Res<AppAssets>) {
+    // TODO Adjust based on Seed
+    // TODO Spawn event text
+    let enter = gui::create_button(
+        commands,
+        gui::TEXT_BUTTON,
+        gui::NORMAL_BUTTON,
+        130.,
+        true,
+        "enter".into(),
+        assets.gui_font.clone(),
+        ButtonType {
+            key: ButtonKey::EnterEvent,
+        },
+    );
+    let leave = gui::create_button(
+        commands,
+        gui::TEXT_BUTTON,
+        gui::NORMAL_BUTTON,
+        130.,
+        true,
+        "leave".into(),
+        assets.gui_font.clone(),
+        ButtonType {
+            key: ButtonKey::LeaveEvent,
+        },
+    );
+    commands.entity(entity).push_children(&[enter, leave]);
+}
+
 ////////////////////////
-/// Gamehud functions
+/// Gamehud Extentions
 ////////////////////////
 
 pub(crate) fn explore_mode_stats(commands: &mut Commands, font: &Handle<Font>) -> Entity {
