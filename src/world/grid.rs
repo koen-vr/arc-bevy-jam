@@ -51,6 +51,8 @@ impl Plugin for GridPlugin {
             },
         });
 
+        // FixMe: Execution of systems is not ordered, this is broken.
+        // Verification depends on fixed execution to repeatable values.
         app.insert_resource(Shift64::new(rand::random::<i64>()));
 
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
