@@ -9,6 +9,7 @@ pub struct Laser {
 #[derive(Component, Default)]
 pub struct Enemy {
     pub hp: i32,
+    pub timeout: Timer,
 }
 
 #[derive(Component, Default)]
@@ -32,6 +33,7 @@ impl Plugin for EventModePlugin {
         app.add_system_set(SystemSet::on_exit(event_grid).with_system(exit_event_gameplay));
         app.add_system_set(SystemSet::on_enter(event_grid).with_system(enter_event_gameplay));
 
+        app.add_system_set(SystemSet::on_update(event_grid).with_system(enemy_fire_system));
         app.add_system_set(SystemSet::on_update(event_grid).with_system(player_fire_system));
 
         app.add_system_set(
@@ -68,11 +70,12 @@ fn enter_event_gameplay(
 ) {
     log::info!("enter_event_gameplay");
     let (mut player, transform) = player_query.single_mut();
-
+    let mut rng = Shift64::new(rand::random());
     match grid.key {
         EventKey::None => (),
         EventKey::Combat => spawn_combat_event(
             &mut commands,
+            &mut rng,
             &world_assets,
             &grid.get_event_combat(),
             Vec2 {
@@ -89,30 +92,99 @@ fn enter_event_gameplay(
 
 fn spawn_combat_event(
     commands: &mut Commands,
+    rng: &mut Shift64,
     assets: &Res<WorldAssets>,
     action: &CombatAction,
     center: Vec2,
 ) {
-    let mut sprite = TextureAtlasSprite::new(12);
-    sprite.color = Color::rgb(0.9, 0.6, 0.9);
-    sprite.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
+    let mut rng = Shift64::new(rand::random());
+    let mut small_ship = TextureAtlasSprite::new(12);
+    small_ship.color = Color::rgb(0.9, 0.7, 0.9);
+    small_ship.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
 
+    let mut big_ship = TextureAtlasSprite::new(14);
+    big_ship.color = Color::rgb(0.9, 0.7, 0.9);
+    big_ship.custom_size = Some(Vec2::splat(TILE_SIZE * 0.6));
+
+    let mut enemies = action.enemies;
+    if action.is_large {
+        enemies = enemies - 1;
+        let position = Vec2 {
+            x: center.x + rng.f32(TILE_SIZE * 12.) - (TILE_SIZE * 6.),
+            y: center.y + rng.f32(TILE_SIZE * 12.) - (TILE_SIZE * 6.),
+        };
+        spawn_combat_event_big(
+            commands,
+            position,
+            assets.base_space_sheet.clone(),
+            big_ship.clone(),
+        );
+    }
+    for _ in 0..enemies {
+        let position = Vec2 {
+            x: center.x + rng.f32(TILE_SIZE * 12.) - (TILE_SIZE * 6.),
+            y: center.y + rng.f32(TILE_SIZE * 12.) - (TILE_SIZE * 6.),
+        };
+        spawn_combat_event_small(
+            commands,
+            (0.01 * rng.f32(240.)),
+            position,
+            assets.base_space_sheet.clone(),
+            small_ship.clone(),
+        );
+    }
+}
+
+fn spawn_combat_event_small(
+    commands: &mut Commands,
+    time: f32,
+    position: Vec2,
+    atlas: Handle<TextureAtlas>,
+    sprite: TextureAtlasSprite,
+) {
     commands
         .spawn_bundle(SpriteSheetBundle {
             sprite: sprite,
-            texture_atlas: assets.base_space_sheet.clone(),
+            texture_atlas: atlas,
             transform: Transform {
-                translation: Vec3::new(center.x + (TILE_SIZE * 5.), center.y, 10.0),
+                translation: Vec3::new(position.x, position.y, 10.0),
                 ..Default::default()
             },
             ..Default::default()
         })
-        .insert(Enemy { hp: 5 })
+        .insert(Enemy {
+            hp: 4,
+            timeout: Timer::from_seconds(1.2 + time, false),
+        })
+        .insert(CleanupEvent);
+}
+
+fn spawn_combat_event_big(
+    commands: &mut Commands,
+    position: Vec2,
+    atlas: Handle<TextureAtlas>,
+    sprite: TextureAtlasSprite,
+) {
+    commands
+        .spawn_bundle(SpriteSheetBundle {
+            sprite: sprite,
+            texture_atlas: atlas,
+            transform: Transform {
+                translation: Vec3::new(position.x, position.y, 10.0),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .insert(Enemy {
+            hp: 8,
+            timeout: Timer::from_seconds(1.2, false),
+        })
         .insert(CleanupEvent);
 }
 
 fn spawn_mining_event(commands: &mut Commands, action: &MiningAction) {
     // TODO Implement
+    log::warn!("not implemented")
 }
 
 ////////////////////////
@@ -154,7 +226,7 @@ pub(crate) fn lasers_movement(
         if laser.timeout.finished() {
             commands.entity(entity).despawn_recursive();
         } else {
-            let move_speed = 12. * time.delta_seconds() * TILE_SIZE * 0.5;
+            let move_speed = 12. * time.delta_seconds() * TILE_SIZE * 0.4;
             transform.translation = transform.translation + (laser.direction * move_speed);
         }
     }
@@ -163,10 +235,41 @@ pub(crate) fn lasers_movement(
 pub(crate) fn lasers_enemy_hits(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut Laser, &mut Transform), With<EnemyLaser>>,
+    mut laser_query: Query<
+        (Entity, &mut Laser, &mut Transform),
+        (With<EnemyLaser>, Without<Player>),
+    >,
+    mut player_query: Query<
+        (&mut Player, &mut HealthRecource, &mut Transform),
+        Without<EnemyLaser>,
+    >,
 ) {
-    for (entity, mut laser, mut transform) in query.iter_mut() {
-        // TODO Implement
+    let (mut player, mut player_health, player_transform) = player_query.single_mut();
+    if !player.active {
+        return;
+    }
+    let max_dist = TILE_SIZE * 0.25;
+    for (entity, mut _laser, transform) in laser_query.iter_mut() {
+        let pos = Vec2 {
+            x: transform.translation.x,
+            y: transform.translation.y,
+        };
+        let dist = pos.distance(Vec2 {
+            x: player_transform.translation.x,
+            y: player_transform.translation.y,
+        });
+
+        if max_dist > dist {
+            commands.entity(entity).despawn_recursive();
+
+            player_health.value = player_health.value - 1;
+            player_health.value = player_health.value.clamp(0, player_health.max);
+            log::info!("health: {}", player_health.value);
+            if player_health.value < 1 {
+                // TODO Player Died Event
+                player.active = false;
+            }
+        }
     }
 }
 
@@ -201,6 +304,78 @@ pub(crate) fn lasers_player_hits(
             }
         }
     }
+}
+
+pub(crate) fn enemy_fire_system(
+    time: Res<Time>,
+    mut commands: Commands,
+    world_assets: Res<WorldAssets>,
+    mut enemy_query: Query<(&mut Enemy, &mut Transform), Without<Player>>,
+    mut player_query: Query<(&mut Player, &mut Transform), Without<Enemy>>,
+) {
+    let mut rng = Shift64::new(rand::random());
+    let (player, mut player_transform) = player_query.single_mut();
+    if !player.active {
+        return;
+    }
+    let mut laser = TextureAtlasSprite::new(46);
+    laser.custom_size = Some(Vec2 {
+        x: TILE_SIZE * 0.05,
+        y: TILE_SIZE * 0.5,
+    });
+    for (mut enemy, mut enemy_transform) in enemy_query.iter_mut() {
+        // Update timer
+        enemy.timeout.tick(time.delta());
+        if enemy.timeout.finished() {
+            enemy.timeout = Timer::from_seconds(0.6 + (0.01 * rng.f32(160.)), false);
+            let from = Vec2 {
+                x: enemy_transform.translation.x,
+                y: enemy_transform.translation.y,
+            };
+            spawn_enemy_laser(
+                &mut commands,
+                from,
+                Vec2 {
+                    x: player_transform.translation.x - from.x,
+                    y: player_transform.translation.y - from.y,
+                },
+                world_assets.base_space_sheet.clone(),
+                laser.clone(),
+            )
+        }
+    }
+}
+
+fn spawn_enemy_laser(
+    commands: &mut Commands,
+    from: Vec2,
+    to: Vec2,
+    atlas: Handle<TextureAtlas>,
+    sprite: TextureAtlasSprite,
+) {
+    let delta = to.x.atan2(to.y);
+
+    commands
+        .spawn_bundle(SpriteSheetBundle {
+            sprite: sprite,
+            texture_atlas: atlas,
+            transform: Transform {
+                rotation: Quat::from_axis_angle(-Vec3::Z, delta),
+                translation: Vec3 {
+                    x: from.x,
+                    y: from.y,
+                    z: 5.0,
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .insert(CleanupEvent)
+        .insert(EnemyLaser)
+        .insert(Laser {
+            direction: Vec3::new(to.x, to.y, 0.0).normalize(),
+            timeout: Timer::from_seconds(1.6, false),
+        });
 }
 
 pub(crate) fn player_fire_system(

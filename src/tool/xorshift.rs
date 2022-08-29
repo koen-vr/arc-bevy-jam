@@ -26,6 +26,11 @@ impl Shift64 {
         return self.seed;
     }
 
+    pub fn f32(&mut self, n: f32) -> f32 {
+        let x = (self.shift() as f64) / 9223372036854775808.0;
+        return ((x * n as f64).abs() - 1.0) as f32;
+    }
+
     pub fn i32(&mut self, n: i32) -> i32 {
         let x = (self.shift() as f64) / 9223372036854775808.0;
         return ((x * n as f64).abs() - 1.0) as i32;
