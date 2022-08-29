@@ -246,7 +246,7 @@ impl HexMap {
             if let Some(node) = self.nodes.get_mut(hex) {
                 let entity = commands
                     .spawn_bundle(SpriteSheetBundle {
-                        sprite: match key > 128 {
+                        sprite: match key > 92 {
                             true => energy.clone(),
                             false => mining.clone(),
                         },
