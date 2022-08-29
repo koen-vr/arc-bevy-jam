@@ -183,7 +183,7 @@ impl GridEvents {
             },
             EventKey::Combat => EventAction {
                 enter: "attack".to_string(),
-                leave: "flee".to_string(),
+                leave: "escape".to_string(),
             },
             EventKey::Energy => EventAction {
                 enter: "--".to_string(),

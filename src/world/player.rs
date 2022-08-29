@@ -20,7 +20,7 @@ pub struct PlayerState {
 }
 
 #[derive(Component, Default)]
-struct PlayerCamera {
+pub struct PlayerCamera {
     timer: Timer,
     scale: f32,
     target: f32,
@@ -135,7 +135,6 @@ fn exit_state(mut commands: Commands, query: Query<Entity, With<CleanupPlayer>>)
 
 fn exit_player_game(mut commands: Commands, query: Query<Entity, With<CleanupPlayerGame>>) {
     log::info!("exit_player_game");
-    // TODO Reset camera offset
     for e in query.iter() {
         commands.entity(e).despawn_recursive();
     }
@@ -382,6 +381,7 @@ fn move_explore_grid(
     if can_jump && !move_to.moving && energy.value >= cost && grid.on_grid(hex) {
         active_sprite.color = Color::rgb(1., 1., 1.);
         if buttons.just_pressed(MouseButton::Left) {
+            log::info!("... event move ...");
             // FixMe: Start roling event dice,
             // cuting corners no dice animations.
 

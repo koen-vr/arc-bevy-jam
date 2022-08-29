@@ -60,7 +60,7 @@ impl Plugin for WorldPlugin {
         app.add_plugin(GridPlugin);
         app.add_plugin(PlayerPlugin);
         app.add_plugin(BaseModePlugin);
-        // app.add_plugin(EventModePlugin);
+        app.add_plugin(EventModePlugin);
         app.add_plugin(ExploreModePlugin);
     }
 }
