@@ -144,31 +144,31 @@ impl GridEvents {
             },
             action: MiningAction {
                 is_large: false,
-                material: 10,
+                material: 1,
             },
         });
         event_data.mining.push(EventInfo {
             data: EventData {
                 key: EventKey::Mining,
-                enter: true,
+                enter: false,
                 title: "Small Belt".to_string(),
                 descr: "A small astroid belt.".to_string(),
             },
             action: MiningAction {
                 is_large: false,
-                material: 25,
+                material: 5,
             },
         });
         event_data.mining.push(EventInfo {
             data: EventData {
                 key: EventKey::Mining,
-                enter: true,
+                enter: false,
                 title: "Big Belt".to_string(),
                 descr: "A big astroid belt.".to_string(),
             },
             action: MiningAction {
                 is_large: true,
-                material: 50,
+                material: 10,
             },
         });
 
@@ -190,8 +190,8 @@ impl GridEvents {
                 leave: "harvest".to_string(),
             },
             EventKey::Mining => EventAction {
-                enter: "explore".to_string(),
-                leave: "leave".to_string(),
+                enter: "--".to_string(),
+                leave: "gather".to_string(),
             },
         }
     }
