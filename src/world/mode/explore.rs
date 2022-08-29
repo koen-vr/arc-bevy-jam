@@ -104,7 +104,8 @@ fn on_start_hex_event(
     mut player_state: ResMut<PlayerState>,
     mut start_hex_event: EventReader<StartHexEvent>,
     mut player_query: Query<(&mut Player, &Transform)>,
-    explore_btn_query: Query<Entity, With<HudNavigate>>,
+    dialog_query: Query<Entity, With<HudDialog>>,
+    navigate_query: Query<Entity, With<HudNavigate>>,
 ) {
     for ev in start_hex_event.iter() {
         let (mut player, transform) = player_query.single_mut();
@@ -113,7 +114,8 @@ fn on_start_hex_event(
             x: transform.translation.x,
             y: transform.translation.y,
         };
-        let entity = explore_btn_query.single();
+        let dialog = dialog_query.single();
+        let navigate = navigate_query.single();
 
         // FixMe This is messy and does not scale
         let hex = grid.get_hex(player_state.position);
@@ -124,21 +126,47 @@ fn on_start_hex_event(
             EventKey::Mining => grid.set_event_mining(events.roll_mining_table(ev.seed)),
         };
 
-        handle_enter_hex_event(entity, &mut commands, &grid, &assets);
+        handle_enter_hex_event(&mut commands, &grid, &assets, dialog, navigate);
     }
 }
 
 fn handle_enter_hex_event(
-    entity: Entity,
     commands: &mut Commands,
     grid: &ResMut<Grid>,
     assets: &Res<AppAssets>,
+    dialog: Entity,
+    navigate: Entity,
 ) {
     // TODO Spawn event text
 
     let act = GridEvents::get_actions(grid.key);
     let data = grid.get_event_data();
     log::info!(data.title);
+
+    let title = commands
+        .spawn_bundle(TextBundle::from_section(
+            data.title,
+            TextStyle {
+                font: assets.gui_font.clone(),
+                font_size: 40.0,
+                color: gui::TEXT_BUTTON,
+            },
+        ))
+        .insert(HudCleanup)
+        .id();
+    let descr = commands
+        .spawn_bundle(TextBundle::from_section(
+            data.descr,
+            TextStyle {
+                font: assets.gui_font.clone(),
+                font_size: 20.0,
+                color: gui::TEXT_BUTTON,
+            },
+        ))
+        .insert(HudCleanup)
+        .id();
+
+    commands.entity(dialog).push_children(&[descr, title]);
 
     let leave = gui::create_button(
         commands,
@@ -166,9 +194,9 @@ fn handle_enter_hex_event(
                 key: ButtonKey::EnterEvent,
             },
         );
-        commands.entity(entity).push_children(&[enter, leave]);
+        commands.entity(navigate).push_children(&[enter, leave]);
     } else {
-        commands.entity(entity).push_children(&[leave]);
+        commands.entity(navigate).push_children(&[leave]);
     }
 }
 
@@ -180,15 +208,16 @@ pub(crate) fn explore_mode_stats(commands: &mut Commands, font: &Handle<Font>) -
     let root = commands
         .spawn_bundle(NodeBundle {
             style: Style {
-                size: Size::new(Val::Px(TILE_SIZE * 5.), Val::Percent(100.)),
-                margin: UiRect::new(Val::Px(0.), Val::Px(24.), Val::Px(0.), Val::Px(0.)),
+                size: Size::new(Val::Px(TILE_SIZE * 8.), Val::Percent(100.)),
+                padding: UiRect::new(Val::Px(0.), Val::Px(12.), Val::Px(0.), Val::Px(0.)),
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Center,
 
                 ..default()
             },
-            color: Color::NONE.into(),
+            color: Color::BLACK.into(),
+            //color: Color::NONE.into(),
             ..default()
         })
         .insert(Name::new("explore-stats"))
@@ -197,7 +226,7 @@ pub(crate) fn explore_mode_stats(commands: &mut Commands, font: &Handle<Font>) -
                 .spawn_bundle(NodeBundle {
                     style: Style {
                         flex_direction: FlexDirection::Row,
-                        size: Size::new(Val::Px(TILE_SIZE * 2.), Val::Px(65.0)),
+                        size: Size::new(Val::Px(TILE_SIZE * 1.8), Val::Px(65.0)),
                         justify_content: JustifyContent::SpaceBetween,
                         align_items: AlignItems::Center,
                         ..Default::default()
@@ -229,7 +258,7 @@ pub(crate) fn explore_mode_stats(commands: &mut Commands, font: &Handle<Font>) -
                 .spawn_bundle(NodeBundle {
                     style: Style {
                         flex_direction: FlexDirection::Row,
-                        size: Size::new(Val::Px(TILE_SIZE * 2.5), Val::Px(65.0)),
+                        size: Size::new(Val::Px(TILE_SIZE * 2.4), Val::Px(65.0)),
                         justify_content: JustifyContent::SpaceBetween,
                         align_items: AlignItems::Center,
                         ..Default::default()
@@ -274,9 +303,10 @@ pub(crate) fn explore_mode_dialog(
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.)),
                 margin: UiRect::all(Val::Auto),
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceAround,
-                align_items: AlignItems::FlexStart,
+                padding: UiRect::new(Val::Px(0.), Val::Px(0.), Val::Px(0.), Val::Px(128.)),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::FlexStart,
+                align_items: AlignItems::Center,
 
                 ..default()
             },
@@ -284,6 +314,7 @@ pub(crate) fn explore_mode_dialog(
             ..default()
         })
         .insert(Name::new("explore-dialog"))
+        .insert(HudDialog)
         .id();
 
     root

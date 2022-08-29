@@ -65,7 +65,7 @@ impl GridEvents {
             data: EventData {
                 key: EventKey::Combat,
                 enter: false,
-                title: "Empty".to_string(),
+                title: "Empty Space".to_string(),
                 descr: "An empty section of space.".to_string(),
             },
             action: CombatAction {
@@ -199,7 +199,7 @@ impl GridEvents {
     pub fn roll_combat_table(&self, seed: i64) -> EventInfo<CombatAction> {
         let mut rng = Shift64::new(seed);
         if rng.i32(256) > 92 {
-            let idx = rng.usize(self.combat.len() - 1) + 1;
+            let idx = rng.usize(self.combat.len()) + 1;
             return self.combat[idx].clone();
         }
         self.combat[0].clone()

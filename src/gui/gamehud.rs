@@ -32,10 +32,13 @@ pub struct DialogType {
 }
 
 #[derive(Component)]
+pub struct HudDialog;
+
+#[derive(Component)]
 pub struct HudNavigate;
 
 #[derive(Component)]
-struct HudCleanup;
+pub struct HudCleanup;
 
 #[derive(Component)]
 struct HudInitCleanup;
@@ -101,6 +104,7 @@ fn button_update(
     mut state: ResMut<State<AppState>>,
     mut buttons: ResMut<Input<MouseButton>>,
     mut hex_event: EventWriter<EndHexEvent>,
+    diag_query: Query<&Children, With<HudDialog>>,
     navi_query: Query<&Children, With<HudNavigate>>,
     mut button_query: Query<
         (&Interaction, &ButtonType, &mut UiColor, &mut Transform),
@@ -113,6 +117,10 @@ fn button_update(
                 buttons.clear();
                 transform.scale *= 1.05;
                 *color = gui::PRESSED_BUTTON.into();
+                let diag = match diag_query.get_single() {
+                    Ok(diag) => Some(diag),
+                    Err(_) => None,
+                };
                 let navi = match navi_query.get_single() {
                     Ok(navi) => Some(navi),
                     Err(_) => None,
@@ -120,6 +128,7 @@ fn button_update(
                 handle_btn_update_click(
                     &mut commands,
                     button_type.key,
+                    diag,
                     navi,
                     &mut state,
                     &mut hex_event,
@@ -140,6 +149,7 @@ fn button_update(
 fn handle_btn_update_click(
     commands: &mut Commands,
     button_key: ButtonKey,
+    diag_children: Option<&Children>,
     navi_children: Option<&Children>,
     state: &mut ResMut<State<AppState>>,
     hex_event: &mut EventWriter<EndHexEvent>,
@@ -180,6 +190,11 @@ fn handle_btn_update_click(
             // TODO despawn dialog
             // TODO: Hook Up Leave event
             // player.active = true;
+            if let Some(children) = diag_children {
+                for entity in children {
+                    commands.entity(entity.clone()).despawn_recursive();
+                }
+            }
             if let Some(children) = navi_children {
                 for entity in children {
                     commands.entity(entity.clone()).despawn_recursive();
@@ -358,7 +373,7 @@ fn enter_explore_gameplay(
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Px(65.0)),
                 flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::FlexStart,
+                justify_content: JustifyContent::SpaceAround,
                 align_items: AlignItems::Center,
                 ..default()
             },
@@ -382,10 +397,27 @@ fn enter_explore_gameplay(
             key: ButtonKey::ExploreExit,
         },
     );
+    let left = commands
+        .spawn_bundle(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Px(TILE_SIZE * 8.), Val::Percent(100.)),
+                padding: UiRect::new(Val::Px(0.), Val::Px(12.), Val::Px(0.), Val::Px(0.)),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::FlexStart,
+                align_items: AlignItems::Center,
+
+                ..default()
+            },
+            //color: Color::NONE.into(),
+            color: Color::BLACK.into(),
+            ..default()
+        })
+        .push_children(&[exit])
+        .id();
 
     let stats = explore_mode_stats(&mut commands, &app_assets.gui_font);
 
     commands.entity(navi).push_children(&[]);
-    commands.entity(menu).push_children(&[exit, navi, stats]);
+    commands.entity(menu).push_children(&[left, navi, stats]);
     commands.entity(root).push_children(&[menu, body]);
 }
