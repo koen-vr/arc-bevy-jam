@@ -327,11 +327,7 @@ fn enter_event_gameplay(
     commands.entity(root).push_children(&[menu, body]);
 }
 
-fn enter_explore_gameplay(
-    mut commands: Commands,
-    app_assets: Res<AppAssets>,
-    world_assets: Res<WorldAssets>,
-) {
+fn enter_explore_gameplay(mut commands: Commands, app_assets: Res<AppAssets>) {
     log::info!("enter_explore_gameplay");
 
     let root = commands
@@ -350,7 +346,7 @@ fn enter_explore_gameplay(
         .insert(HudCleanup)
         .id();
 
-    let body = explore_mode_dialog(&mut commands, &app_assets, &world_assets);
+    let body = explore_mode_dialog(&mut commands);
 
     let menu = commands
         .spawn_bundle(NodeBundle {

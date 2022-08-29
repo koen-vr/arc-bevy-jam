@@ -53,6 +53,7 @@ pub struct HexMap {
     pub nodes: HashMap<Axial, HexNode>,
 }
 
+#[derive(Clone, Copy)]
 pub struct HexNode {
     pub key: EventKey,
     pub value: i32,
@@ -281,6 +282,10 @@ impl HexMap {
     }
 
     pub fn collect(&mut self, other: &mut HexMap) {
-        // TODO Implement
+        for (k, v) in other.nodes.iter() {
+            let pos = other.layout.center_for(k);
+            let hex = self.layout.hex_for(pos);
+            self.nodes.insert(hex, v.clone());
+        }
     }
 }

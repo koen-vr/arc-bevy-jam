@@ -295,11 +295,7 @@ pub(crate) fn explore_mode_stats(commands: &mut Commands, font: &Handle<Font>) -
     root
 }
 
-pub(crate) fn explore_mode_dialog(
-    commands: &mut Commands,
-    app_assets: &Res<AppAssets>,
-    world_assets: &Res<WorldAssets>,
-) -> Entity {
+pub(crate) fn explore_mode_dialog(commands: &mut Commands) -> Entity {
     let root = commands
         .spawn_bundle(NodeBundle {
             style: Style {
