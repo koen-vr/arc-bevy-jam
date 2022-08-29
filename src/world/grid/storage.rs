@@ -57,7 +57,7 @@ pub struct HexMap {
 pub struct HexNode {
     pub key: EventKey,
     pub value: i32,
-    pub entity: Entity,
+    pub entity: Option<Entity>,
 }
 
 impl HexMap {
@@ -120,7 +120,7 @@ impl HexMap {
                     HexNode {
                         key: EventKey::Combat,
                         value: 0,
-                        entity: entity,
+                        entity: None,
                     },
                 );
                 list.push(entity);
@@ -244,28 +244,28 @@ impl HexMap {
             });
             let pos = self.layout.center_for(hex);
             if let Some(node) = self.nodes.get_mut(hex) {
+                let entity = commands
+                    .spawn_bundle(SpriteSheetBundle {
+                        sprite: match key > 128 {
+                            true => energy.clone(),
+                            false => mining.clone(),
+                        },
+                        texture_atlas: world_assets.base_space_sheet.clone(),
+                        transform: Transform {
+                            translation: Vec3::new(pos.x, pos.y, 9.0),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                    .id();
+                points.push(entity);
+
                 node.key = match key > 128 {
                     true => EventKey::Energy,
                     false => EventKey::Mining,
                 };
                 node.value = value;
-
-                points.push(
-                    commands
-                        .spawn_bundle(SpriteSheetBundle {
-                            sprite: match key > 128 {
-                                true => energy.clone(),
-                                false => mining.clone(),
-                            },
-                            texture_atlas: world_assets.base_space_sheet.clone(),
-                            transform: Transform {
-                                translation: Vec3::new(pos.x, pos.y, 9.0),
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .id(),
-                );
+                node.entity = Some(entity);
             } else {
                 log::error!("Invalid hex: {}", hex)
             }

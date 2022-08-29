@@ -360,7 +360,7 @@ impl Grid {
 
     pub fn get_entity(&mut self, hex: Axial) -> Option<Entity> {
         if let Some(node) = self.hexmap.get(&hex) {
-            return Some(node.entity);
+            return node.entity;
         }
         None
     }
@@ -394,6 +394,17 @@ impl Grid {
                 EventData::default()
             }
         }
+    }
+
+    pub fn clr_node(&mut self, hex: &Axial) -> Option<Entity> {
+        if let Some(node) = self.hexmap.get_mut(hex) {
+            let entity = node.entity.clone();
+            node.key = EventKey::Combat;
+            node.value = 0;
+            node.entity = None;
+            return entity;
+        }
+        None
     }
 
     // FixMe: Rust must have cleaner way to do this setup

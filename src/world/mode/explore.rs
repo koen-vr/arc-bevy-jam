@@ -87,20 +87,26 @@ fn update_energy_text(
 ////////////////////////////////
 
 fn on_end_hex_event(
+    mut commands: Commands,
     mut end_hex_event: EventReader<EndHexEvent>,
     mut grid: ResMut<Grid>,
     player_state: Res<PlayerState>,
     mut player_query: Query<(&mut Player, &mut EnergyRecource)>,
 ) {
     for ev in end_hex_event.iter() {
+        // TODO: Destroy the resource if found
         let (mut player, mut energy) = player_query.single_mut();
         let hex = grid.get_hex(player_state.position);
 
         if !ev.enter && EventKey::Energy == grid.get_event_key(hex) {
             let event = grid.get_event_energy();
             energy.value = energy.value + event.energy;
+            energy.value = energy.value.clamp(0, energy.max);
         }
 
+        if let Some(entity) = grid.clr_node(&hex) {
+            commands.entity(entity).despawn_recursive();
+        }
         player.active = true;
     }
 }
