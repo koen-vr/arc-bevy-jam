@@ -30,6 +30,11 @@ impl Shift64 {
         let x = (self.shift() as f64) / 9223372036854775808.0;
         return ((x * n as f64).abs() - 1.0) as i32;
     }
+
+    pub fn usize(&mut self, n: usize) -> usize {
+        let x = (self.shift() as f64) / 9223372036854775808.0;
+        return ((x * n as f64).abs() - 1.0) as usize;
+    }
 }
 
 pub fn get_seed(str: String) -> i64 {

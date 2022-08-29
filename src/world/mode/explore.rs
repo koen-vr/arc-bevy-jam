@@ -99,6 +99,7 @@ fn on_end_hex_event(
 fn on_start_hex_event(
     mut commands: Commands,
     assets: Res<AppAssets>,
+    events: Res<GridEvents>,
     mut grid: ResMut<Grid>,
     mut player_state: ResMut<PlayerState>,
     mut start_hex_event: EventReader<StartHexEvent>,
@@ -114,41 +115,61 @@ fn on_start_hex_event(
         };
         let entity = explore_btn_query.single();
 
-        // TODO Handle event the roller ...
-        // grid.roll_event_table(ev.seed, player_state.position);
+        // FixMe This is messy and does not scale
+        let hex = grid.get_hex(player_state.position);
+        match grid.get_event_key(hex) {
+            EventKey::None => grid.clr_event(),
+            EventKey::Combat => grid.set_event_combat(events.roll_combat_table(ev.seed)),
+            EventKey::Energy => grid.set_event_energy(events.roll_energy_table(ev.seed)),
+            EventKey::Mining => grid.set_event_mining(events.roll_mining_table(ev.seed)),
+        };
 
-        handle_enter_hex_event(entity, &mut commands, &assets);
+        handle_enter_hex_event(entity, &mut commands, &grid, &assets);
     }
 }
 
-fn handle_enter_hex_event(entity: Entity, commands: &mut Commands, assets: &Res<AppAssets>) {
-    // TODO Adjust based on Seed
+fn handle_enter_hex_event(
+    entity: Entity,
+    commands: &mut Commands,
+    grid: &ResMut<Grid>,
+    assets: &Res<AppAssets>,
+) {
     // TODO Spawn event text
-    let enter = gui::create_button(
-        commands,
-        gui::TEXT_BUTTON,
-        gui::NORMAL_BUTTON,
-        130.,
-        true,
-        "enter".into(),
-        assets.gui_font.clone(),
-        ButtonType {
-            key: ButtonKey::EnterEvent,
-        },
-    );
+
+    let act = GridEvents::get_actions(grid.key);
+    let data = grid.get_event_data();
+    log::info!(data.title);
+
     let leave = gui::create_button(
         commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
         130.,
         true,
-        "leave".into(),
+        act.leave,
         assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::LeaveEvent,
         },
     );
-    commands.entity(entity).push_children(&[enter, leave]);
+
+    if data.enter {
+        let enter = gui::create_button(
+            commands,
+            gui::TEXT_BUTTON,
+            gui::NORMAL_BUTTON,
+            130.,
+            true,
+            act.enter,
+            assets.gui_font.clone(),
+            ButtonType {
+                key: ButtonKey::EnterEvent,
+            },
+        );
+        commands.entity(entity).push_children(&[enter, leave]);
+    } else {
+        commands.entity(entity).push_children(&[leave]);
+    }
 }
 
 ////////////////////////

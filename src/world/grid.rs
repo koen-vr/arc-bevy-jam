@@ -16,9 +16,13 @@ pub mod utilities;
 pub use utilities::*;
 
 pub struct Grid {
+    pub key: EventKey,
     pub radius: i32,
     pub layout: Layout,
-    pub nodes: HashMap<Axial, HexNode>,
+    pub hexmap: HashMap<Axial, HexNode>,
+    pub combat: Option<EventInfo<CombatAction>>,
+    pub energy: Option<EventInfo<EnergyAction>>,
+    pub mining: Option<EventInfo<MiningAction>>,
 }
 
 #[derive(Component)]
@@ -53,10 +57,15 @@ impl Plugin for GridPlugin {
             matrix: Orientation::new(orient::Style::Pointy),
         };
         app.insert_resource(Grid {
+            key: EventKey::None,
             radius: radius,
             layout: layout,
-            nodes: HashMap::new(),
+            hexmap: HashMap::new(),
+            combat: None,
+            energy: None,
+            mining: None,
         });
+        GridEvents::load_data(app);
 
         // FixMe: Execution of systems is not ordered, this is broken.
         // Verification depends on fixed execution to repeatable values.
@@ -149,9 +158,6 @@ fn spawn_grid_nodes(
         Color::rgba(0.6, 0.4, 0.6, 0.3),
     );
 
-    // TODO Grid should have a map of all tiles
-    // all points in nodes should be stored in grid
-
     // Sub grid nodes
     let offset = 24;
     let mut node_a = HexMap::new(
@@ -171,6 +177,7 @@ fn spawn_grid_nodes(
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
     );
+    root.collect(&mut node_a);
 
     let mut node_b = HexMap::new(
         Vec2 {
@@ -189,6 +196,7 @@ fn spawn_grid_nodes(
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
     );
+    root.collect(&mut node_b);
 
     let mut node_c = HexMap::new(
         Vec2 {
@@ -210,6 +218,7 @@ fn spawn_grid_nodes(
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
     );
+    root.collect(&mut node_c);
 
     let mut node_d = HexMap::new(
         Vec2 {
@@ -228,6 +237,7 @@ fn spawn_grid_nodes(
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
     );
+    root.collect(&mut node_d);
 
     let mut node_e = HexMap::new(
         Vec2 {
@@ -246,6 +256,7 @@ fn spawn_grid_nodes(
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
     );
+    root.collect(&mut node_e);
 
     let mut node_f = HexMap::new(
         Vec2 {
@@ -264,6 +275,7 @@ fn spawn_grid_nodes(
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
     );
+    root.collect(&mut node_f);
 
     let mut node_g = HexMap::new(
         Vec2 {
@@ -285,8 +297,9 @@ fn spawn_grid_nodes(
         rng.shift(),
         Color::rgba(0.8, 0.6, 0.8, 0.2),
     );
+    root.collect(&mut node_g);
 
-    grid.nodes = root.nodes;
+    grid.hexmap = root.nodes;
 }
 
 fn _spawn_grid_node(
@@ -339,33 +352,76 @@ impl Grid {
     }
 
     pub fn get_value(&mut self, hex: Axial) -> i32 {
-        if let Some(node) = self.nodes.get(&hex) {
+        if let Some(node) = self.hexmap.get(&hex) {
             return node.value;
         }
         0
     }
 
-    pub fn get(&mut self, hex: Axial) -> Option<Entity> {
-        if let Some(node) = self.nodes.get(&hex) {
+    pub fn get_entity(&mut self, hex: Axial) -> Option<Entity> {
+        if let Some(node) = self.hexmap.get(&hex) {
             return Some(node.entity);
         }
         None
     }
 
     pub fn get_event_key(&mut self, hex: Axial) -> EventKey {
-        if let Some(node) = self.nodes.get(&hex) {
+        if let Some(node) = self.hexmap.get(&hex) {
             return node.key;
         }
         EventKey::Combat
     }
 
-    pub fn roll_event_table(&mut self, seed: i64, position: Vec2) -> EventKey {
-        let hex = self.layout.hex_for(position);
-        if let Some(node) = self.nodes.get(&hex) {
-            // TODO Roll the actual table in to an event
-            return node.key;
+    pub fn get_event_data(&self) -> EventData {
+        match self.key {
+            EventKey::None => EventData::default(),
+            EventKey::Combat => {
+                if let Some(event) = &self.combat {
+                    return event.data.clone();
+                }
+                EventData::default()
+            }
+            EventKey::Energy => {
+                if let Some(event) = &self.energy {
+                    return event.data.clone();
+                }
+                EventData::default()
+            }
+            EventKey::Mining => {
+                if let Some(event) = &self.mining {
+                    return event.data.clone();
+                }
+                EventData::default()
+            }
         }
-        // TODO Roll combat table in to an event
-        EventKey::Combat
+    }
+
+    // FixMe: Rust must have cleaner way to do this setup
+    pub fn clr_event(&mut self) {
+        self.key = EventKey::None;
+        self.combat = None;
+        self.energy = None;
+        self.mining = None;
+    }
+
+    pub fn set_event_combat(&mut self, event: EventInfo<CombatAction>) {
+        self.key = EventKey::Combat;
+        self.combat = Some(event);
+        self.energy = None;
+        self.mining = None;
+    }
+
+    pub fn set_event_energy(&mut self, event: EventInfo<EnergyAction>) {
+        self.key = EventKey::Energy;
+        self.combat = None;
+        self.energy = Some(event);
+        self.mining = None;
+    }
+
+    pub fn set_event_mining(&mut self, event: EventInfo<MiningAction>) {
+        self.key = EventKey::Mining;
+        self.combat = None;
+        self.energy = None;
+        self.mining = Some(event);
     }
 }

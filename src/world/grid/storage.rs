@@ -237,10 +237,6 @@ impl HexMap {
         for pnt in list {
             let key = rng.i32(256);
             let value = rng.i32(256);
-            // let pos = Vec2 {
-            //     x: ((pnt.x as f32) - offset_x) + self.layout.origin.x,
-            //     y: ((pnt.y as f32) - offset_y) + self.layout.origin.y,
-            // };
             let hex = &self.layout.hex_for(Vec2 {
                 x: ((pnt.x as f32) - offset_x) + self.layout.origin.x,
                 y: ((pnt.y as f32) - offset_y) + self.layout.origin.y,
@@ -280,8 +276,11 @@ impl HexMap {
             .insert_bundle(VisibilityBundle::default())
             .insert_bundle(TransformBundle::default())
             .insert(CleanupGrid)
-            // Keep the points or hide?
-            //.insert(GridRoot)
+            .insert(GridRoot)
             .push_children(&points);
+    }
+
+    pub fn collect(&mut self, other: &mut HexMap) {
+        // TODO Implement
     }
 }
