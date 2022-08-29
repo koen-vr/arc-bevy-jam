@@ -13,6 +13,7 @@ pub enum ButtonKey {
     ExploreExit,
     EnterEvent,
     LeaveEvent,
+    GameOver,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -40,19 +41,19 @@ pub struct HudNavigate;
 #[derive(Component)]
 pub struct HudCleanup;
 
-#[derive(Component)]
-struct HudInitCleanup;
-
 pub struct GamehudPlugin;
 
 impl Plugin for GamehudPlugin {
     fn build(&self, app: &mut App) {
+        let game_over = AppState::GamePlay(GameMode::GameOver);
+
         let base_mode = AppState::GamePlay(GameMode::BaseGrid);
         let event_mode = AppState::GamePlay(GameMode::EventGrid);
         let explore_mode = AppState::GamePlay(GameMode::ExploreGrid);
 
-        // app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_hud));
-        // app.add_system_set(SystemSet::on_enter(base_mode).with_system(enter_hud));
+        app.add_system_set(SystemSet::on_exit(game_over).with_system(exit_state));
+        app.add_system_set(SystemSet::on_exit(game_over).with_system(exit_gameover));
+        app.add_system_set(SystemSet::on_enter(game_over).with_system(enter_gameove));
 
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
         app.add_system_set(SystemSet::on_pause(base_mode).with_system(exit_state));
@@ -70,6 +71,9 @@ impl Plugin for GamehudPlugin {
         app.add_system_set(SystemSet::on_resume(explore_mode).with_system(enter_explore_gameplay));
 
         app.add_system_set(
+            SystemSet::on_update(game_over).with_system(button_update.label("gui-update")),
+        );
+        app.add_system_set(
             SystemSet::on_update(base_mode).with_system(button_update.label("gui-update")),
         );
         app.add_system_set(
@@ -78,24 +82,110 @@ impl Plugin for GamehudPlugin {
         app.add_system_set(
             SystemSet::on_update(explore_mode).with_system(button_update.label("gui-update")),
         );
+
+        app.add_system_set(SystemSet::on_update(event_mode).with_system(on_gameover));
+        app.add_system_set(SystemSet::on_update(explore_mode).with_system(on_gameover));
     }
 }
 
-// fn exit_hud(mut commands: Commands, query: Query<Entity, With<HudInitCleanup>>) {
-//     log::info!("exit_hud");
-//     for e in query.iter() {
-//         commands.entity(e).despawn_recursive();
-//     }
-// }
+fn exit_gameover(mut commands: Commands, query: Query<Entity, With<HudCleanup>>) {
+    log::info!("exit_hud");
+    for e in query.iter() {
+        commands.entity(e).despawn_recursive();
+    }
+}
 
-// fn enter_hud(mut commands: Commands) {
-//     log::info!("enter_hud");
-// }
+fn enter_gameove(
+    mut commands: Commands,
+    app_assets: Res<AppAssets>,
+    mut player_query: Query<&mut Player>,
+) {
+    log::info!("enter_gameove");
+    let player = player_query.single_mut();
+
+    let node = commands
+        .spawn_bundle(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Percent(100.0), Val::Percent(50.0)),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            color: Color::NONE.into(),
+            ..default()
+        })
+        .insert(Name::new("event-menu"))
+        .insert(HudCleanup)
+        .id();
+
+    let mut list = Vec::new();
+
+    list.push(gui::create_button(
+        &mut commands,
+        gui::TEXT_BUTTON,
+        gui::NORMAL_BUTTON,
+        120.,
+        true,
+        "exit".into(),
+        app_assets.gui_font.clone(),
+        ButtonType {
+            key: ButtonKey::GameOver,
+        },
+    ));
+
+    list.push(
+        commands
+            .spawn_bundle(TextBundle::from_section(
+                player.message.clone(),
+                TextStyle {
+                    font: app_assets.gui_font.clone(),
+                    font_size: 24.0,
+                    color: gui::TEXT_BUTTON,
+                },
+            ))
+            .id(),
+    );
+
+    list.push(
+        commands
+            .spawn_bundle(TextBundle::from_section(
+                "Gameover",
+                TextStyle {
+                    font: app_assets.gui_font.clone(),
+                    font_size: 42.0,
+                    color: gui::TEXT_BUTTON,
+                },
+            ))
+            .id(),
+    );
+
+    commands.entity(node).push_children(&list);
+    //commands.entity(entity).push_children(&[node]);
+}
 
 fn exit_state(mut commands: Commands, query: Query<Entity, With<HudCleanup>>) {
     log::info!("exit_state");
     for e in query.iter() {
         commands.entity(e).despawn_recursive();
+    }
+}
+
+fn on_gameover(
+    mut state: ResMut<State<AppState>>,
+    mut game_over: EventReader<GameOverEvent>,
+    mut player_query: Query<&mut Player>,
+) {
+    let mut player = player_query.single_mut();
+    if player.active {
+        return;
+    }
+    for ev in game_over.iter() {
+        player.message = ev.message.clone();
+        log::info!("on_gameover");
+        state
+            .push(AppState::GamePlay(GameMode::GameOver))
+            .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
     }
 }
 
@@ -201,6 +291,12 @@ fn handle_btn_update_click(
                 }
             }
             hex_event.send(EndHexEvent { enter: false });
+        }
+        ButtonKey::GameOver => {
+            log::info!("{} {}", KEY_CLICKED, "GameOver");
+            state
+                .set(AppState::MainLoading)
+                .unwrap_or_else(|error| log::error!("{}: {}", FAILED_TO_SET_STATE, error));
         }
     }
 }

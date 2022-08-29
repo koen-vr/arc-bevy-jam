@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::gui::gamehud::*;
+
 #[derive(Component, Default)]
 pub struct Laser {
     timeout: Timer,
@@ -210,6 +212,7 @@ pub(crate) fn event_mode_dialog(
             color: Color::NONE.into(),
             ..default()
         })
+        .insert(HudDialog)
         .insert(Name::new("event-dialog"))
         .id();
 
@@ -235,6 +238,7 @@ pub(crate) fn lasers_movement(
 pub(crate) fn lasers_enemy_hits(
     time: Res<Time>,
     mut commands: Commands,
+    mut game_over: EventWriter<GameOverEvent>,
     mut laser_query: Query<
         (Entity, &mut Laser, &mut Transform),
         (With<EnemyLaser>, Without<Player>),
@@ -262,12 +266,15 @@ pub(crate) fn lasers_enemy_hits(
         if max_dist > dist {
             commands.entity(entity).despawn_recursive();
 
-            player_health.value = player_health.value - 1;
-            player_health.value = player_health.value.clamp(0, player_health.max);
+            if (player_health.value > 0) {
+                player_health.value = player_health.value - 1;
+            }
             log::info!("health: {}", player_health.value);
             if player_health.value < 1 {
-                // TODO Player Died Event
                 player.active = false;
+                game_over.send(GameOverEvent {
+                    message: "Your ship was destroyed.".to_string(),
+                })
             }
         }
     }
@@ -383,17 +390,28 @@ pub(crate) fn player_fire_system(
     windows: Res<Windows>,
     world_assets: Res<WorldAssets>,
     mut buttons: ResMut<Input<MouseButton>>,
-    mut player_query: Query<(&mut Player, &mut Transform)>,
+    mut game_over: EventWriter<GameOverEvent>,
+    mut player_query: Query<(&mut Player, &mut Transform, &mut EnergyRecource)>,
     camera_query: Query<(&Camera, &GlobalTransform), (With<PlayerCamera>, Without<Player>)>,
 ) {
-    let (player, mut player_transform) = player_query.single_mut();
+    let (mut player, mut player_transform, mut energy) = player_query.single_mut();
     if !player.active {
         return;
     }
 
     if buttons.just_pressed(MouseButton::Left) {
-        log::info!("... event fire ...");
         buttons.clear();
+
+        if (energy.value > 0) {
+            energy.value = energy.value - 1;
+        }
+        if energy.value < 1 {
+            player.active = false;
+            game_over.send(GameOverEvent {
+                message: "No more energy, your ship is stranded.".to_string(),
+            })
+        }
+
         // FIXMe: This code is in 3 spot: player fire player rotate, move_explore_grid
         // Get the primary window the camera renders to.
         let (camera, camera_transform) = camera_query.single();

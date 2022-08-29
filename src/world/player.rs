@@ -8,6 +8,8 @@ pub const ENERGY_COST: i32 = 4;
 #[derive(Component, Default, Inspectable)]
 pub struct Player {
     pub active: bool,
+    // FixMe remove Hack
+    pub message: String,
     lookat: Vec3,
     jump_range: u8,
     move_speed: f32,
@@ -59,6 +61,22 @@ impl Plugin for PlayerPlugin {
             app.register_inspectable::<HealthRecource>();
             app.register_inspectable::<EnergyRecource>();
         }
+
+        app.add_system_set(
+            SystemSet::on_exit(AppState::GamePlay(GameMode::GameOver)).with_system(exit_state),
+        );
+        app.add_system_set(
+            SystemSet::on_exit(AppState::GamePlay(GameMode::GameOver))
+                .with_system(exit_player_game),
+        );
+        app.add_system_set(
+            SystemSet::on_exit(AppState::GamePlay(GameMode::GameOver))
+                .with_system(exit_player_event),
+        );
+        app.add_system_set(
+            SystemSet::on_exit(AppState::GamePlay(GameMode::GameOver))
+                .with_system(exit_player_explore),
+        );
 
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_player_game));
@@ -330,11 +348,11 @@ fn move_explore_grid(
     time: Res<Time>,
     windows: Res<Windows>,
     mut shift: ResMut<Shift64>,
-    // mut event: ResMut<EventState>,
+    mut game_over: EventWriter<GameOverEvent>,
     mut buttons: ResMut<Input<MouseButton>>,
     mut hex_event: EventWriter<StartHexEvent>,
     mut player_query: Query<(
-        &Player,
+        &mut Player,
         &mut GridTarget,
         &mut Transform,
         &mut EnergyRecource,
@@ -342,7 +360,7 @@ fn move_explore_grid(
     mut active_query: Query<(&mut Sprite, &mut Transform), (With<GridTargetHex>, Without<Player>)>,
     camera_query: Query<(&Camera, &GlobalTransform), (With<PlayerCamera>, Without<Player>)>,
 ) {
-    let (player, mut move_to, mut transform, mut energy) = player_query.single_mut();
+    let (mut player, mut move_to, mut transform, mut energy) = player_query.single_mut();
     if !player.active {
         return;
     }
@@ -394,7 +412,10 @@ fn move_explore_grid(
             if energy.value > cost {
                 energy.value = energy.value - cost;
             } else {
-                energy.value = 0;
+                player.active = false;
+                game_over.send(GameOverEvent {
+                    message: "No more energy, your ship is stranded.".to_string(),
+                })
             }
         }
     } else {

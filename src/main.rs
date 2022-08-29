@@ -28,6 +28,7 @@ pub struct CameraOffset {
 
 #[derive(Component, Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub enum GameMode {
+    GameOver,
     BaseGrid,
     EventGrid,
     ExploreGrid,

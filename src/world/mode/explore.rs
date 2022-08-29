@@ -88,6 +88,7 @@ fn update_energy_text(
 
 fn on_end_hex_event(
     mut commands: Commands,
+    mut game_over: EventWriter<GameOverEvent>,
     mut end_hex_event: EventReader<EndHexEvent>,
     mut grid: ResMut<Grid>,
     player_state: Res<PlayerState>,
@@ -102,6 +103,12 @@ fn on_end_hex_event(
             let event = grid.get_event_energy();
             energy.value = energy.value + event.energy;
             energy.value = energy.value.clamp(0, energy.max);
+            if energy.value < 1 {
+                player.active = false;
+                game_over.send(GameOverEvent {
+                    message: "No more energy, your ship is stranded.".to_string(),
+                })
+            }
         }
 
         if let Some(entity) = grid.clr_node(&hex) {

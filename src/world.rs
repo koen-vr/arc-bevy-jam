@@ -9,8 +9,8 @@ use grid::*;
 pub mod mode;
 pub use mode::*;
 
-mod player;
-use player::*;
+pub mod player;
+pub use player::*;
 
 pub const TILE_SIZE: f32 = 64.0;
 
@@ -18,6 +18,10 @@ pub const ROTATE_SPEED: f32 = 24.0;
 
 pub const CAMERA_ZOOM_EVENT: f32 = 0.9;
 pub const CAMERA_ZOOM_EXPLORE: f32 = 1.8;
+
+pub struct GameOverEvent {
+    pub message: String,
+}
 
 #[derive(AssetCollection)]
 pub struct PlayerAssets {}
@@ -55,6 +59,8 @@ impl Plugin for WorldPlugin {
                 .with_collection::<PlayerAssets>()
                 .with_collection::<WorldAssets>(),
         );
+
+        app.add_event::<GameOverEvent>();
 
         app.add_plugin(BgPlugin);
         app.add_plugin(GridPlugin);

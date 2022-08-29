@@ -52,7 +52,6 @@ impl Plugin for BaseModePlugin {
         });
 
         // TODO Generate the map data while in this state, remove transition delay
-
         app.add_system_set(SystemSet::on_update(base_grid).with_system(button_update));
     }
 }

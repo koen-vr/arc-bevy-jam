@@ -71,6 +71,13 @@ impl Plugin for GridPlugin {
         // Verification depends on fixed execution to repeatable values.
         app.insert_resource(Shift64::new(rand::random::<i64>()));
 
+        app.add_system_set(
+            SystemSet::on_exit(AppState::GamePlay(GameMode::GameOver)).with_system(exit_state),
+        );
+        app.add_system_set(
+            SystemSet::on_exit(AppState::GamePlay(GameMode::GameOver)).with_system(exit_grid_game),
+        );
+
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_state));
         app.add_system_set(SystemSet::on_exit(base_mode).with_system(exit_grid_game));
         // app.add_system_set(SystemSet::on_enter(base_mode).with_system(enter_grid_game));
@@ -351,19 +358,19 @@ impl Grid {
         self.layout.hex_for(position)
     }
 
-    pub fn get_value(&mut self, hex: Axial) -> i32 {
-        if let Some(node) = self.hexmap.get(&hex) {
-            return node.value;
-        }
-        0
-    }
+    // pub fn get_value(&mut self, hex: Axial) -> i32 {
+    //     if let Some(node) = self.hexmap.get(&hex) {
+    //         return node.value;
+    //     }
+    //     0
+    // }
 
-    pub fn get_entity(&mut self, hex: Axial) -> Option<Entity> {
-        if let Some(node) = self.hexmap.get(&hex) {
-            return node.entity;
-        }
-        None
-    }
+    // pub fn get_entity(&mut self, hex: Axial) -> Option<Entity> {
+    //     if let Some(node) = self.hexmap.get(&hex) {
+    //         return node.entity;
+    //     }
+    //     None
+    // }
 
     pub fn get_event_key(&mut self, hex: Axial) -> EventKey {
         if let Some(node) = self.hexmap.get(&hex) {
