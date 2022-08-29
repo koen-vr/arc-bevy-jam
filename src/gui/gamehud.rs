@@ -150,6 +150,22 @@ fn enter_gameove(
     list.push(
         commands
             .spawn_bundle(TextBundle::from_section(
+                match player.total > 1 {
+                    true => format!("Cleared {} event(s).", player.total),
+                    false => format!("Cleared {} event.", player.total),
+                },
+                TextStyle {
+                    font: app_assets.gui_font.clone(),
+                    font_size: 24.0,
+                    color: gui::TEXT_BUTTON,
+                },
+            ))
+            .id(),
+    );
+
+    list.push(
+        commands
+            .spawn_bundle(TextBundle::from_section(
                 "Gameover",
                 TextStyle {
                     font: app_assets.gui_font.clone(),
@@ -277,9 +293,6 @@ fn handle_btn_update_click(
         }
         ButtonKey::LeaveEvent => {
             log::info!("{} {}", KEY_CLICKED, "LeaveEvent");
-            // TODO despawn dialog
-            // TODO: Hook Up Leave event
-            // player.active = true;
             if let Some(children) = diag_children {
                 for entity in children {
                     commands.entity(entity.clone()).despawn_recursive();

@@ -25,6 +25,9 @@ pub struct CleanupEvent;
 
 pub struct EventModePlugin;
 
+pub struct EventDone {
+    count: u16,
+}
 // TODO Energy consumption for lasers
 // TODO Energy consumption for movement
 
@@ -32,6 +35,8 @@ impl Plugin for EventModePlugin {
     fn build(&self, app: &mut App) {
         let game_over = AppState::GamePlay(GameMode::GameOver);
         let event_mode = AppState::GamePlay(GameMode::EventGrid);
+
+        app.add_event::<EventDone>();
 
         app.add_system_set(SystemSet::on_exit(game_over).with_system(exit_event_gameplay));
 
@@ -58,8 +63,27 @@ impl Plugin for EventModePlugin {
                 .after("laser-move"),
         );
 
+        app.add_system_set(SystemSet::on_update(event_mode).with_system(on_event_done));
+
         app.add_system_set(SystemSet::on_update(event_mode).with_system(update_health_text));
         app.add_system_set(SystemSet::on_update(event_mode).with_system(update_energy_text));
+    }
+}
+
+fn on_event_done(
+    mut state: ResMut<State<AppState>>,
+    mut event_done: EventReader<EventDone>,
+    mut player_query: Query<&mut Player>,
+) {
+    let mut player = player_query.single_mut();
+    if !player.active {
+        return;
+    }
+    for ev in event_done.iter() {
+        player.total = player.total + ev.count;
+        state
+            .pop()
+            .unwrap_or_else(|error| log::error!("on_event_done: {}", error));
     }
 }
 
@@ -110,21 +134,27 @@ fn enter_event_gameplay(
     let mut rng = Shift64::new(rand::random());
     match grid.key {
         EventKey::None => (),
-        EventKey::Combat => spawn_combat_event(
-            &mut commands,
-            &mut rng,
-            &world_assets,
-            &grid.get_event_combat(),
-            Vec2 {
-                x: transform.translation.x,
-                y: transform.translation.y,
-            },
-        ),
+        EventKey::Combat => {
+            let event = &grid.get_event_combat();
+            player.targets = event.enemies;
+            spawn_combat_event(
+                &mut commands,
+                &mut rng,
+                &world_assets,
+                &event,
+                Vec2 {
+                    x: transform.translation.x,
+                    y: transform.translation.y,
+                },
+            )
+        }
         EventKey::Energy => (),
-        EventKey::Mining => spawn_mining_event(&mut commands, &grid.get_event_mining()),
+        EventKey::Mining => {
+            let event = &grid.get_event_mining();
+            player.targets = event.material;
+            spawn_mining_event(&mut commands, &grid.get_event_mining())
+        }
     }
-
-    // TODO Spawn Enemies
 }
 
 fn spawn_combat_event(
@@ -317,12 +347,19 @@ pub(crate) fn lasers_enemy_hits(
 
 pub(crate) fn lasers_player_hits(
     mut commands: Commands,
+    mut event_done: EventWriter<EventDone>,
+    mut player_query: Query<&mut Player, (Without<EnemyLaser>, Without<PlayerLaser>)>,
     mut laser_query: Query<(Entity, &mut Laser, &mut Transform), With<PlayerLaser>>,
     mut enemy_query: Query<
         (Entity, &mut Enemy, &mut Transform),
         (With<CleanupEvent>, Without<PlayerLaser>),
     >,
 ) {
+    let mut player = player_query.single_mut();
+    if !player.active {
+        return;
+    }
+
     let max_dist = TILE_SIZE * 0.25;
     for (l_entity, mut laser, mut l_transform) in laser_query.iter_mut() {
         let pos = Vec2 {
@@ -341,7 +378,12 @@ pub(crate) fn lasers_player_hits(
                 enemy.hp = enemy.hp - 1;
                 if enemy.hp < 1 {
                     commands.entity(e_entity).despawn_recursive();
-                    // TODO Update Combat stats
+                    if player.targets > 0 {
+                        player.targets = player.targets - 1;
+                        if player.targets == 0 {
+                            event_done.send(EventDone { count: 1 })
+                        }
+                    }
                 }
             }
         }

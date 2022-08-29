@@ -8,8 +8,12 @@ pub const ENERGY_COST: i32 = 4;
 #[derive(Component, Default, Inspectable)]
 pub struct Player {
     pub active: bool,
+
     // FixMe remove Hack
     pub message: String,
+    pub total: u16,
+    pub targets: u16,
+
     lookat: Vec3,
     jump_range: u8,
     move_speed: f32,
