@@ -231,6 +231,10 @@ impl HexMap {
         energy.color = Color::rgb(0.9, 0.8, 1.0);
         energy.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
 
+        let mut energy_big = TextureAtlasSprite::new(29);
+        energy.color = Color::rgb(0.9, 0.8, 1.0);
+        energy.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
+
         let mut mining = TextureAtlasSprite::new(32);
         mining.color = Color::rgb(0.9, 0.8, 1.0);
         mining.custom_size = Some(Vec2::splat(TILE_SIZE * 0.5));
@@ -260,7 +264,7 @@ impl HexMap {
                     .id();
                 points.push(entity);
 
-                node.key = match key > 128 {
+                node.key = match key > 92 {
                     true => EventKey::Energy,
                     false => EventKey::Mining,
                 };
