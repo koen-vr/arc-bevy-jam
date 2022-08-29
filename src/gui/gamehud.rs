@@ -403,9 +403,24 @@ fn enter_event_gameplay(
         .insert(HudCleanup)
         .id();
 
-    let mut list = Vec::new();
+    let navi = commands
+        .spawn_bundle(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Percent(100.0), Val::Px(65.0)),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceAround,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            color: Color::NONE.into(),
+            ..default()
+        })
+        .insert(Name::new("hex-menu"))
+        .insert(HudCleanup)
+        .insert(HudNavigate)
+        .id();
 
-    list.push(gui::create_button(
+    let left = gui::create_button(
         &mut commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
@@ -416,9 +431,11 @@ fn enter_event_gameplay(
         ButtonType {
             key: ButtonKey::EventExit,
         },
-    ));
+    );
 
-    commands.entity(menu).push_children(&list);
+    let stats = event_mode_stats(&mut commands, &app_assets.gui_font);
+
+    commands.entity(menu).push_children(&[left, navi, stats]);
 
     commands.entity(root).push_children(&[menu, body]);
 }
