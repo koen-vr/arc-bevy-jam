@@ -11,10 +11,10 @@ pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
-        if cfg!(debug_assertions) {
-            app.add_plugin(LogDiagnosticsPlugin::default());
-            app.add_plugin(FrameTimeDiagnosticsPlugin::default());
-        }
+        // if cfg!(debug_assertions) {
+        //     app.add_plugin(LogDiagnosticsPlugin::default());
+        //     app.add_plugin(FrameTimeDiagnosticsPlugin::default());
+        // }
         if ENABLE_INSPECTOR {
             app.add_plugin(WorldInspectorPlugin::new());
             app.insert_resource(WorldInspectorParams {

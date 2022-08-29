@@ -398,6 +398,7 @@ impl Grid {
 
     // FixMe: Rust must have cleaner way to do this setup
     pub fn clr_event(&mut self) {
+        log::info!("Set Event Clear");
         self.key = EventKey::None;
         self.combat = None;
         self.energy = None;
@@ -405,6 +406,7 @@ impl Grid {
     }
 
     pub fn set_event_combat(&mut self, event: EventInfo<CombatAction>) {
+        log::info!("Set Event Combat: {}", event.data.title);
         self.key = EventKey::Combat;
         self.combat = Some(event);
         self.energy = None;
@@ -412,6 +414,7 @@ impl Grid {
     }
 
     pub fn set_event_energy(&mut self, event: EventInfo<EnergyAction>) {
+        log::info!("Set Event Energy: {}", event.data.title);
         self.key = EventKey::Energy;
         self.combat = None;
         self.energy = Some(event);
@@ -419,6 +422,7 @@ impl Grid {
     }
 
     pub fn set_event_mining(&mut self, event: EventInfo<MiningAction>) {
+        log::info!("Set Event Mining: {}", event.data.title);
         self.key = EventKey::Mining;
         self.combat = None;
         self.energy = None;

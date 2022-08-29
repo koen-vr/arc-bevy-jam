@@ -137,8 +137,6 @@ fn handle_enter_hex_event(
     dialog: Entity,
     navigate: Entity,
 ) {
-    // TODO Spawn event text
-
     let act = GridEvents::get_actions(grid.key);
     let data = grid.get_event_data();
     log::info!(data.title);
@@ -168,13 +166,18 @@ fn handle_enter_hex_event(
 
     commands.entity(dialog).push_children(&[descr, title]);
 
+    // FixMe Ugly cheat to fix empty events
+    let mut text = act.leave;
+    if !data.enter {
+        text = "leave".to_string();
+    }
     let leave = gui::create_button(
         commands,
         gui::TEXT_BUTTON,
         gui::NORMAL_BUTTON,
         130.,
         true,
-        act.leave,
+        text,
         assets.gui_font.clone(),
         ButtonType {
             key: ButtonKey::LeaveEvent,
@@ -216,8 +219,7 @@ pub(crate) fn explore_mode_stats(commands: &mut Commands, font: &Handle<Font>) -
 
                 ..default()
             },
-            color: Color::BLACK.into(),
-            //color: Color::NONE.into(),
+            color: Color::NONE.into(),
             ..default()
         })
         .insert(Name::new("explore-stats"))

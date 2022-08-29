@@ -408,8 +408,7 @@ fn enter_explore_gameplay(
 
                 ..default()
             },
-            //color: Color::NONE.into(),
-            color: Color::BLACK.into(),
+            color: Color::NONE.into(),
             ..default()
         })
         .push_children(&[exit])

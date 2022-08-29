@@ -186,7 +186,7 @@ impl GridEvents {
                 leave: "flee".to_string(),
             },
             EventKey::Energy => EventAction {
-                enter: "enter".to_string(),
+                enter: "harvest".to_string(),
                 leave: "ignore".to_string(),
             },
             EventKey::Mining => EventAction {
