@@ -405,6 +405,27 @@ impl Grid {
         self.mining = None;
     }
 
+    pub fn get_event_combat(&mut self) -> CombatAction {
+        if let Some(event) = &self.combat {
+            return event.action;
+        }
+        CombatAction::default()
+    }
+
+    pub fn get_event_energy(&mut self) -> EnergyAction {
+        if let Some(event) = &self.energy {
+            return event.action;
+        }
+        EnergyAction::default()
+    }
+
+    pub fn get_event_mining(&mut self) -> MiningAction {
+        if let Some(event) = &self.mining {
+            return event.action;
+        }
+        MiningAction::default()
+    }
+
     pub fn set_event_combat(&mut self, event: EventInfo<CombatAction>) {
         log::info!("Set Event Combat: {}", event.data.title);
         self.key = EventKey::Combat;

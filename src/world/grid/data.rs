@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub enum EventKey {
     #[default]
     None,
@@ -113,7 +113,7 @@ impl GridEvents {
         event_data.energy.push(EventInfo {
             data: EventData {
                 key: EventKey::Energy,
-                enter: true,
+                enter: false,
                 title: "Small Star".to_string(),
                 descr: "A small star.".to_string(),
             },
@@ -125,7 +125,7 @@ impl GridEvents {
         event_data.energy.push(EventInfo {
             data: EventData {
                 key: EventKey::Energy,
-                enter: true,
+                enter: false,
                 title: "Big Star".to_string(),
                 descr: "A big star.".to_string(),
             },
@@ -186,8 +186,8 @@ impl GridEvents {
                 leave: "flee".to_string(),
             },
             EventKey::Energy => EventAction {
-                enter: "harvest".to_string(),
-                leave: "ignore".to_string(),
+                enter: "--".to_string(),
+                leave: "harvest".to_string(),
             },
             EventKey::Mining => EventAction {
                 enter: "explore".to_string(),

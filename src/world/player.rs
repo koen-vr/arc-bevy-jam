@@ -3,6 +3,8 @@ use super::*;
 pub mod resources;
 pub use resources::*;
 
+pub const ENERGY_COST: i32 = 4;
+
 #[derive(Component, Default, Inspectable)]
 pub struct Player {
     pub active: bool,
@@ -372,7 +374,7 @@ fn move_explore_grid(
     // see move_to.update_current call above
     let hex = &grid.layout.hex_for(move_to.mouse);
     let dist = hex.distance(&grid.layout.hex_for(pos));
-    let cost = (dist * 6) as u16;
+    let cost = (dist * ENERGY_COST) as u16;
 
     let can_jump = dist <= player.jump_range as i32;
 

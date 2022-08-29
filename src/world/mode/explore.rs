@@ -88,10 +88,19 @@ fn update_energy_text(
 
 fn on_end_hex_event(
     mut end_hex_event: EventReader<EndHexEvent>,
-    mut player_query: Query<&mut Player>,
+    mut grid: ResMut<Grid>,
+    player_state: Res<PlayerState>,
+    mut player_query: Query<(&mut Player, &mut EnergyRecource)>,
 ) {
     for ev in end_hex_event.iter() {
-        let mut player = player_query.single_mut();
+        let (mut player, mut energy) = player_query.single_mut();
+        let hex = grid.get_hex(player_state.position);
+
+        if !ev.enter && EventKey::Energy == grid.get_event_key(hex) {
+            let event = grid.get_event_energy();
+            energy.value = energy.value + event.energy;
+        }
+
         player.active = true;
     }
 }
@@ -168,7 +177,7 @@ fn handle_enter_hex_event(
 
     // FixMe Ugly cheat to fix empty events
     let mut text = act.leave;
-    if !data.enter {
+    if !data.enter && grid.key != EventKey::Energy {
         text = "leave".to_string();
     }
     let leave = gui::create_button(
